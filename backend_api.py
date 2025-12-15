@@ -82,5 +82,6 @@ def web_to_pdf(payload: dict = Body(...)):
         },
     )
 
-# UI last (serve static/index.html at /)
-app.mount("/", StaticFiles(directory="static", html=True), name="ui")
+# UI last (serve static/index.html at /) — only if folder exists
+if os.path.isdir("static"):
+    app.mount("/", StaticFiles(directory="static", html=True), name="ui")
