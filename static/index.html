@@ -1,155 +1,361 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Web to PDF</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Web → PDF</title>
+  <meta name="theme-color" content="#0b1220" />
   <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #0f172a;
-      color: #e5e7eb;
-      margin: 0;
-      padding: 24px;
+    :root{
+      --bg:#070b14;
+      --card:#0c1426;
+      --card2:#0a1222;
+      --text:#e8eefc;
+      --muted:#9fb0d0;
+      --line:#182645;
+      --accent:#2f6bff;
+      --accent2:#1e4fd6;
+      --good:#22c55e;
+      --bad:#ef4444;
+      --warn:#f59e0b;
+      --shadow: 0 18px 60px rgba(0,0,0,.55);
+      --radius: 18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 20% -10%, #132a6b 0%, rgba(19,42,107,0) 55%),
+                  radial-gradient(900px 700px at 95% 0%, #0d3a2c 0%, rgba(13,58,44,0) 50%),
+                  var(--bg);
+      color:var(--text);
+      min-height:100vh;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      padding:28px 14px 40px;
+    }
+    .wrap{
+      width:min(720px, 100%);
+    }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0)) , var(--card);
+      border:1px solid rgba(255,255,255,.07);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:22px;
+    }
+    h1{
+      margin:0 0 6px 0;
+      font-size: 28px;
+      letter-spacing:.2px;
+    }
+    .sub{
+      margin:0 0 18px 0;
+      color:var(--muted);
+      line-height:1.35;
+      font-size:14px;
+    }
+    .grid{
+      display:grid;
+      gap:14px;
+    }
+    label{
+      display:block;
+      font-weight:650;
+      font-size:13px;
+      margin:0 0 7px 0;
+      color: #dbe6ff;
+    }
+    input{
+      width:100%;
+      padding:14px 14px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      color: var(--text);
+      outline:none;
+      font-size:16px;
+    }
+    input::placeholder{ color: rgba(159,176,208,.65); }
+    input:focus{
+      border-color: rgba(47,107,255,.55);
+      box-shadow: 0 0 0 4px rgba(47,107,255,.18);
     }
 
-    .container {
-      max-width: 640px;
-      margin: 0 auto;
-      background: #020617;
-      padding: 24px;
-      border-radius: 12px;
-      box-shadow: 0 0 0 1px #1e293b;
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .btn{
+      border:0;
+      padding:13px 16px;
+      border-radius: 14px;
+      font-weight:750;
+      font-size:15px;
+      cursor:pointer;
+      transition: transform .08s ease, background .12s ease, opacity .12s ease;
+      user-select:none;
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn.primary{
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      color:white;
+      flex:1;
+      min-width: 200px;
+    }
+    .btn.ghost{
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      color: var(--text);
+    }
+    .btn.danger{
+      background: rgba(239,68,68,.14);
+      border: 1px solid rgba(239,68,68,.30);
+      color: #ffd7d7;
+    }
+    .btn:disabled{
+      opacity:.55;
+      cursor:not-allowed;
     }
 
-    h1 {
-      margin-top: 0;
-      font-size: 1.5rem;
+    .status{
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.16);
+      color: var(--muted);
+      line-height:1.35;
+      font-size:14px;
+      min-height: 44px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      word-break: break-word;
     }
-
-    label {
-      display: block;
-      margin-top: 16px;
-      font-weight: 600;
+    .dot{
+      width:10px;height:10px;border-radius:999px;background: rgba(159,176,208,.6);
+      box-shadow: 0 0 0 4px rgba(159,176,208,.12);
+      flex: 0 0 auto;
     }
+    .ok .dot{ background: var(--good); box-shadow: 0 0 0 4px rgba(34,197,94,.18); }
+    .bad .dot{ background: var(--bad); box-shadow: 0 0 0 4px rgba(239,68,68,.18); }
+    .warn .dot{ background: var(--warn); box-shadow: 0 0 0 4px rgba(245,158,11,.18); }
 
-    input {
-      width: 100%;
-      margin-top: 6px;
-      padding: 10px;
-      border-radius: 6px;
-      border: 1px solid #334155;
-      background: #020617;
-      color: #e5e7eb;
-      font-size: 1rem;
+    .fineprint{
+      margin-top:12px;
+      color: rgba(159,176,208,.85);
+      font-size: 12.5px;
+      line-height:1.4;
     }
+    .fineprint a{ color:#b9ccff; text-decoration:none; border-bottom:1px dashed rgba(185,204,255,.45); }
+    .fineprint a:active{ opacity:.8; }
 
-    button {
-      margin-top: 20px;
-      padding: 12px;
-      width: 100%;
-      font-size: 1rem;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      background: #2563eb;
-      color: white;
-      font-weight: 700;
+    .footer{
+      margin-top: 14px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      color: rgba(159,176,208,.65);
+      font-size: 12px;
+      flex-wrap:wrap;
     }
-
-    button:disabled {
-      background: #475569;
-      cursor: not-allowed;
-    }
-
-    .status {
-      margin-top: 16px;
-      font-size: 0.95rem;
-      min-height: 1.2em;
-    }
-
-    .error {
-      color: #f87171;
-    }
-
-    .success {
-      color: #4ade80;
+    .pill{
+      padding:6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.08);
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Web → PDF</h1>
+  <div class="wrap">
+    <div class="card">
+      <h1>Web → PDF</h1>
+      <p class="sub">
+        Paste a website URL and your access token. If you have credits, it forges a PDF and downloads it to your device.
+      </p>
 
-    <label for="url">Website URL</label>
-    <input id="url" type="url" placeholder="https://example.com" />
+      <div class="grid">
+        <div>
+          <label for="url">Website URL</label>
+          <input id="url" placeholder="https://example.com" autocomplete="off" inputmode="url" />
+        </div>
 
-    <label for="token">Access Token</label>
-    <input id="token" type="text" placeholder="PASTE YOUR TOKEN" />
+        <div>
+          <label for="token">Access Token</label>
+          <input id="token" placeholder="PASTE YOUR TOKEN" autocomplete="off" />
+        </div>
 
-    <button id="generateBtn">Generate PDF</button>
+        <div class="row">
+          <button class="btn primary" id="go">Generate PDF</button>
+          <button class="btn ghost" id="save">Save Token</button>
+          <button class="btn ghost" id="check">Check Credits</button>
+          <button class="btn danger" id="clear">Clear</button>
+        </div>
 
-    <div id="status" class="status"></div>
+        <div class="status" id="status">
+          <span class="dot"></span>
+          <span id="statusText">Ready.</span>
+        </div>
+
+        <div class="fineprint">
+          Credits only burn on success. If a page fails to load, your credits stay intact.<br/>
+          Need credits? <a id="buyLink" href="#" target="_blank" rel="noreferrer">Buy Credits</a>
+          <span id="buyNote">(coming online soon)</span>
+        </div>
+
+        <div class="footer">
+          <span class="pill" id="apiHint">API: /api/web-to-pdf</span>
+          <span class="pill" id="buildHint">UI: Polish V1</span>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <script>
-    const btn = document.getElementById("generateBtn");
-    const statusEl = document.getElementById("status");
+<script>
+(function(){
+  const $ = (id)=>document.getElementById(id);
 
-    btn.addEventListener("click", async () => {
-      const url = document.getElementById("url").value.trim();
-      const token = document.getElementById("token").value.trim();
+  const urlEl = $("url");
+  const tokenEl = $("token");
+  const goBtn = $("go");
+  const saveBtn = $("save");
+  const checkBtn = $("check");
+  const clearBtn = $("clear");
+  const statusBox = $("status");
+  const statusText = $("statusText");
+  const buyLink = $("buyLink");
+  const buyNote = $("buyNote");
 
-      statusEl.textContent = "";
-      statusEl.className = "status";
+  // Put your future Stripe/checkout link here later.
+  // For now it stays a placeholder.
+  const BUY_URL = ""; // e.g. "https://buy.stripe.com/...."
 
-      if (!url || !token) {
-        statusEl.textContent = "URL and token are required.";
-        statusEl.classList.add("error");
+  if (BUY_URL) {
+    buyLink.href = BUY_URL;
+    buyNote.textContent = "";
+  } else {
+    buyLink.addEventListener("click", (e)=>{
+      e.preventDefault();
+      setStatus("warn", "Buying credits isn’t live yet. For now, request a token from the admin.");
+    });
+  }
+
+  function setStatus(kind, msg){
+    statusBox.classList.remove("ok","bad","warn");
+    if (kind) statusBox.classList.add(kind);
+    statusText.textContent = msg;
+  }
+
+  function setBusy(on){
+    goBtn.disabled = on;
+    saveBtn.disabled = on;
+    checkBtn.disabled = on;
+    clearBtn.disabled = on;
+    if (on) goBtn.textContent = "Working…";
+    else goBtn.textContent = "Generate PDF";
+  }
+
+  // Load saved token
+  const saved = localStorage.getItem("webtopdf_token") || "";
+  if (saved) tokenEl.value = saved;
+
+  saveBtn.addEventListener("click", ()=>{
+    const t = (tokenEl.value || "").trim();
+    if (!t) return setStatus("warn","Paste a token first, then save.");
+    localStorage.setItem("webtopdf_token", t);
+    setStatus("ok","Token saved on this device.");
+  });
+
+  clearBtn.addEventListener("click", ()=>{
+    urlEl.value = "";
+    tokenEl.value = "";
+    localStorage.removeItem("webtopdf_token");
+    setStatus("warn","Cleared. Paste token again when ready.");
+  });
+
+  checkBtn.addEventListener("click", async ()=>{
+    const t = (tokenEl.value || "").trim();
+    if (!t) return setStatus("warn","Paste a token first.");
+    setBusy(true);
+    try{
+      const res = await fetch(`/api/credits?token=${encodeURIComponent(t)}`);
+      const data = await res.json();
+      if (!data || !data.valid) {
+        setStatus("bad","Token not valid. Ask admin for a fresh token.");
+      } else {
+        setStatus("ok", `Credits OK. Remaining: ${data.remaining}`);
+      }
+    }catch(e){
+      setStatus("bad","Could not check credits. Try again.");
+    }finally{
+      setBusy(false);
+    }
+  });
+
+  goBtn.addEventListener("click", async ()=>{
+    const url = (urlEl.value || "").trim();
+    const token = (tokenEl.value || "").trim();
+
+    if (!url) return setStatus("warn","Paste a website URL.");
+    if (!/^https?:\/\//i.test(url)) return setStatus("warn","URL must start with http:// or https://");
+    if (!token) return setStatus("warn","Paste your access token.");
+
+    // auto-save token because people forget
+    localStorage.setItem("webtopdf_token", token);
+
+    setBusy(true);
+    setStatus("warn","Forging PDF…");
+
+    try{
+      const res = await fetch("/api/web-to-pdf", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({url, token})
+      });
+
+      if (!res.ok){
+        let msg = "PDF failed.";
+        try{
+          const data = await res.json();
+          if (data && data.detail) msg = data.detail;
+        }catch(_){}
+        setStatus("bad", msg);
         return;
       }
 
-      btn.disabled = true;
-      btn.textContent = "Generating…";
+      const blob = await res.blob();
+      const cd = res.headers.get("content-disposition") || "";
+      const match = cd.match(/filename="([^"]+)"/i);
+      const filename = match ? match[1] : "webtopdf.pdf";
+      const remaining = res.headers.get("x-credits-remaining");
 
-      try {
-        const res = await fetch("/api/web-to-pdf", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url, token })
-        });
+      const a = document.createElement("a");
+      const blobUrl = URL.createObjectURL(blob);
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(blobUrl);
 
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.detail || "Request failed");
-        }
+      if (remaining !== null) setStatus("ok", `PDF ready. Credits remaining: ${remaining}`);
+      else setStatus("ok", "PDF ready.");
 
-        const blob = await res.blob();
-        const jobId = res.headers.get("X-Job-Id") || "webtopdf";
-        const remaining = res.headers.get("X-Credits-Remaining");
+      // clear url for the next run, keep token
+      urlEl.value = "";
+    }catch(e){
+      setStatus("bad","Network error. Try again.");
+    }finally{
+      setBusy(false);
+    }
+  });
 
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `webtopdf_${jobId}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-
-        statusEl.textContent =
-          remaining !== null
-            ? `PDF ready. Credits remaining: ${remaining}`
-            : "PDF ready.";
-        statusEl.classList.add("success");
-
-      } catch (err) {
-        statusEl.textContent = err.message;
-        statusEl.classList.add("error");
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "Generate PDF";
-      }
-    });
-  </script>
+})();
+</script>
 </body>
 </html>
