@@ -1,164 +1,155 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>WebToPDF</title>
+  <meta charset="UTF-8" />
+  <title>Web to PDF</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <style>
-    :root { color-scheme: dark; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#0b0f19; color:#e7e9ee; }
-    .wrap { max-width: 860px; margin: 0 auto; padding: 28px 16px 60px; }
-    .card { background:#121a2b; border:1px solid rgba(255,255,255,.10); border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
-    h1 { margin: 0 0 8px; font-size: 26px; }
-    p { margin: 6px 0 14px; color: rgba(231,233,238,.85); line-height: 1.4; }
-    label { display:block; font-weight: 800; margin: 10px 0 6px; }
-    input{
-      width:100%; box-sizing: border-box; padding: 14px 12px; border-radius: 12px;
-      border: 1px solid rgba(255,255,255,.14); background: #0c1220; color:#e7e9ee;
-      outline: none;
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      margin: 0;
+      padding: 24px;
     }
-    .row { display:flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      background: #020617;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 0 0 1px #1e293b;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 1.5rem;
+    }
+
+    label {
+      display: block;
+      margin-top: 16px;
+      font-weight: 600;
+    }
+
+    input {
+      width: 100%;
+      margin-top: 6px;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 1rem;
+    }
+
     button {
-      padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.16);
-      background: #1f2a44; color:#e7e9ee; font-weight: 900; cursor: pointer;
+      margin-top: 20px;
+      padding: 12px;
+      width: 100%;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background: #2563eb;
+      color: white;
+      font-weight: 700;
     }
-    button.primary { background: rgba(34,197,94,.16); border-color: rgba(34,197,94,.30); }
-    button:disabled { opacity: .55; cursor: not-allowed; }
-    .msg { margin-top: 12px; padding: 10px 12px; border-radius: 12px; border:1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.25); }
-    .muted { color: rgba(231,233,238,.75); font-size: 13px; }
-    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
-    .pill { display:inline-block; padding: 6px 10px; border-radius: 999px; background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.10); }
+
+    button:disabled {
+      background: #475569;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 16px;
+      font-size: 0.95rem;
+      min-height: 1.2em;
+    }
+
+    .error {
+      color: #f87171;
+    }
+
+    .success {
+      color: #4ade80;
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <div class="pill">WebToPDF • Credits</div>
-      <h1>URL → PDF</h1>
-      <p>Paste your token, check credits, forge PDFs.</p>
+  <div class="container">
+    <h1>Web → PDF</h1>
 
-      <label for="token">Token</label>
-      <input id="token" placeholder="PASTE TOKEN HERE" autocomplete="off" />
+    <label for="url">Website URL</label>
+    <input id="url" type="url" placeholder="https://example.com" />
 
-      <div class="row">
-        <button id="save">Save Token</button>
-        <button id="check">Check Credits</button>
-        <button id="health">Health</button>
-      </div>
+    <label for="token">Access Token</label>
+    <input id="token" type="text" placeholder="PASTE YOUR TOKEN" />
 
-      <label for="url" style="margin-top:16px;">URL</label>
-      <input id="url" placeholder="https://example.com" autocomplete="off" />
+    <button id="generateBtn">Generate PDF</button>
 
-      <div class="row">
-        <button class="primary" id="go">Forge PDF</button>
-        <button id="buy" type="button">Buy Credits</button>
-      </div>
-
-      <div id="out" class="msg muted">Waiting.</div>
-
-      <p class="muted" style="margin-top:14px;">
-        API: <code>/api/web-to-pdf</code> • Credits: <code>/api/credits?token=</code>
-      </p>
-    </div>
+    <div id="status" class="status"></div>
   </div>
 
-<script>
-  const $ = (id) => document.getElementById(id);
-  const out = $("out");
-  const btnGo = $("go");
+  <script>
+    const btn = document.getElementById("generateBtn");
+    const statusEl = document.getElementById("status");
 
-  function say(msg) { out.classList.remove("muted"); out.textContent = msg; }
-  function idle(msg) { out.classList.add("muted"); out.textContent = msg; }
+    btn.addEventListener("click", async () => {
+      const url = document.getElementById("url").value.trim();
+      const token = document.getElementById("token").value.trim();
 
-  function getToken() {
-    return ($("token").value || localStorage.getItem("webtopdf_token") || "").trim();
-  }
-  function setToken(t) {
-    $("token").value = t || "";
-    if (t) localStorage.setItem("webtopdf_token", t);
-  }
+      statusEl.textContent = "";
+      statusEl.className = "status";
 
-  // Load saved token
-  setToken(localStorage.getItem("webtopdf_token") || "");
-
-  $("save").onclick = () => {
-    const t = $("token").value.trim();
-    if (!t) return say("Paste a token first.");
-    localStorage.setItem("webtopdf_token", t);
-    say("Token saved.");
-  };
-
-  $("health").onclick = async () => {
-    idle("Checking /api/health …");
-    try {
-      const r = await fetch("/api/health");
-      const j = await r.json();
-      say("Health: " + JSON.stringify(j));
-    } catch (e) {
-      say("Health failed: " + (e?.message || e));
-    }
-  };
-
-  $("check").onclick = async () => {
-    const t = getToken();
-    if (!t) return say("Paste a token first.");
-    idle("Checking credits …");
-    try {
-      const r = await fetch("/api/credits?token=" + encodeURIComponent(t));
-      const j = await r.json();
-      if (!j.valid) return say("Token not valid. Buy credits.");
-      const rem = (j.remaining === -1) ? "Unlimited" : j.remaining;
-      say("Credits OK. Remaining: " + rem);
-    } catch (e) {
-      say("Credit check failed: " + (e?.message || e));
-    }
-  };
-
-  $("buy").onclick = () => {
-    // Replace this with your Stripe Payment Link URL later.
-    // For MVP today: you can sell manually and mint tokens using /api/admin/create-token.
-    say("For now: pay manually → you receive a token. Stripe link can go here next.");
-  };
-
-  $("go").onclick = async () => {
-    const url = ($("url").value || "").trim();
-    const token = getToken();
-    if (!token) return say("Paste a token first.");
-    if (!url) return say("Give me a URL.");
-
-    btnGo.disabled = true;
-    idle("Forging PDF…");
-
-    try {
-      const r = await fetch("/api/web-to-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, token })
-      });
-
-      if (!r.ok) {
-        const t = await r.text();
-        throw new Error("Convert failed (" + r.status + "): " + t);
+      if (!url || !token) {
+        statusEl.textContent = "URL and token are required.";
+        statusEl.classList.add("error");
+        return;
       }
 
-      const blob = await r.blob();
-      const a = document.createElement("a");
-      const safe = (new URL(url)).hostname.replace(/[^a-z0-9.-]/gi, "_");
-      a.href = URL.createObjectURL(blob);
-      a.download = `webtopdf_${safe}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(a.href);
+      btn.disabled = true;
+      btn.textContent = "Generating…";
 
-      const rem = r.headers.get("X-Credits-Remaining");
-      say("Done. PDF downloaded. Remaining: " + (rem ?? "?"));
-    } catch (e) {
-      say("Error: " + (e?.message || e));
-    } finally {
-      btnGo.disabled = false;
-    }
-  };
-</script>
+      try {
+        const res = await fetch("/api/web-to-pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, token })
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || "Request failed");
+        }
+
+        const blob = await res.blob();
+        const jobId = res.headers.get("X-Job-Id") || "webtopdf";
+        const remaining = res.headers.get("X-Credits-Remaining");
+
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `webtopdf_${jobId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        statusEl.textContent =
+          remaining !== null
+            ? `PDF ready. Credits remaining: ${remaining}`
+            : "PDF ready.";
+        statusEl.classList.add("success");
+
+      } catch (err) {
+        statusEl.textContent = err.message;
+        statusEl.classList.add("error");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Generate PDF";
+      }
+    });
+  </script>
 </body>
 </html>
