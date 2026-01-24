@@ -255,18 +255,16 @@ def web_to_pdf(payload: dict = Body(...)):
             )
             context = browser.new_context()
             page = context.new_page()
-
-            page.goto(url, wait_until="networkidle", timeout=60000)
-
-            pdf_bytes = page.pdf(
-                format="Letter",
-                print_background=True,
-                margin={"top": "0.5in", "bottom": "0.5in", "left": "0.5in", "right": "0.5in"},
-            )
-
-            context.close()
-            browser.close()
-
+            try:
+                page.goto(url, wait_until="networkidle", timeout=60000)
+                pdf_bytes = page.pdf(
+                    format="Letter",
+                    print_background=True,
+                    margin={"top": "0.5in", "bottom": "0.5in", "left": "0.5in", "right": "0.5in"},
+                )
+            finally:
+                context.close()
+                browser.close()
     except PWTimeoutError:
         raise HTTPException(status_code=408, detail="Timed out loading page. Try again or use a simpler URL.")
     except Exception as e:
