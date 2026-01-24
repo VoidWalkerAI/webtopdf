@@ -158,6 +158,7 @@ def _burn_one_credit(ws, rec: Dict[str, Any]) -> Dict[str, Any]:
     ws.update_cell(rec["_row"], 3, str(new_remaining))  # remaining
     ws.update_cell(rec["_row"], 5, _utc_now_iso())      # last_used_at_utc
     return {"token": rec["token"], "plan": rec.get("plan", ""), "remaining": new_remaining}
+    
 
 # -----------------------
 # Routes
@@ -236,13 +237,13 @@ def web_to_pdf(payload: dict = Body(...)):
 
     if not _is_probably_url(url):
         raise HTTPException(status_code=400, detail="URL must start with http:// or https://")
-
     if len(url) > 2000:
         raise HTTPException(status_code=400, detail="URL too long.")
 
-    # Credits gate (Google Sheets)
     ws = _get_tokens_ws()
-    credit_info = _decrement_or_allow(ws, token)
+
+    # 1) Gate only (NO decrement yet)
+    allow = _allow_only(ws, token)
 
     job_id = uuid.uuid4().hex[:10].upper()
 
@@ -250,11 +251,7 @@ def web_to_pdf(payload: dict = Body(...)):
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=True,
-                args=[
-                    "--no-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-gpu",
-                ],
+                args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
             )
             context = browser.new_context()
             page = context.new_page()
@@ -274,6 +271,9 @@ def web_to_pdf(payload: dict = Body(...)):
         raise HTTPException(status_code=408, detail="Timed out loading page. Try again or use a simpler URL.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
+
+    # 2) SUCCESS: burn one credit now
+    credit_info = _burn_one_credit(ws, allow)
 
     filename = f"webtopdf_{job_id}.pdf"
     return Response(
