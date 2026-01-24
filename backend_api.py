@@ -130,7 +130,7 @@ def _parse_remaining(s: str) -> Optional[int]:
         return None
 
 
-def _decrement_or_allow(ws, token: str) -> Dict[str, Any]:
+def _allow_only(ws, token: str) -> Dict[str, Any]:
     rec = _get_token_record(ws, token)
     if not rec:
         raise HTTPException(status_code=402, detail="Missing/invalid token. Buy credits to continue.")
@@ -141,18 +141,23 @@ def _decrement_or_allow(ws, token: str) -> Dict[str, Any]:
 
     # Unlimited
     if remaining_i == -1:
-        ws.update_cell(rec["_row"], 5, _utc_now_iso())  # last_used_at_utc
-        return {"token": token, "plan": rec.get("plan", ""), "remaining": -1}
+        return {"token": token, "plan": rec.get("plan", ""), "remaining": -1, "_row": rec["_row"]}
 
     if remaining_i <= 0:
         raise HTTPException(status_code=402, detail="Out of credits. Buy more to continue.")
 
-    # Decrement + update last used
-    new_remaining = remaining_i - 1
-    ws.update_cell(rec["_row"], 3, str(new_remaining))   # remaining
-    ws.update_cell(rec["_row"], 5, _utc_now_iso())       # last_used_at_utc
-    return {"token": token, "plan": rec.get("plan", ""), "remaining": new_remaining}
+    return {"token": token, "plan": rec.get("plan", ""), "remaining": remaining_i, "_row": rec["_row"]}
 
+def _burn_one_credit(ws, rec: Dict[str, Any]) -> Dict[str, Any]:
+    # rec must contain: _row, remaining, plan, token
+    if rec["remaining"] == -1:
+        ws.update_cell(rec["_row"], 5, _utc_now_iso())  # last_used_at_utc
+        return {"token": rec["token"], "plan": rec.get("plan", ""), "remaining": -1}
+
+    new_remaining = int(rec["remaining"]) - 1
+    ws.update_cell(rec["_row"], 3, str(new_remaining))  # remaining
+    ws.update_cell(rec["_row"], 5, _utc_now_iso())      # last_used_at_utc
+    return {"token": rec["token"], "plan": rec.get("plan", ""), "remaining": new_remaining}
 
 # -----------------------
 # Routes
