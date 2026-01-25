@@ -380,16 +380,16 @@ def stripe_create_checkout_session(payload: dict = Body(...)):
 
     try:
         session = stripe.checkout.Session.create(
-            mode="payment",
-            line_items=[{"price": info["price_id"], "quantity": 1}],
-            success_url=SUCCESS_URL,
-            cancel_url=CANCEL_URL,
-            metadata={
-                "tier": info["tier"],
-                "credits": str(info["credits"]),
-                "product": "WebToPDF",
-            },
-        )
+    mode="payment",
+    line_items=[{"price": info["price_id"], "quantity": 1}],
+    success_url=SUCCESS_URL,
+    cancel_url=CANCEL_URL,
+    metadata={
+        "tier": info["tier"],          # Economy / Pro / Platinum
+        "credits": str(info["credits"]),  # 10 / 50 / 200
+        "product": "WebToPDF",
+    },
+)
         return {"ok": True, "url": session.url}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Stripe session create failed: {str(e)}")
