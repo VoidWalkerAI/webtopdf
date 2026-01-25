@@ -1,445 +1,263 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Web → PDF</title>
-  <meta name="theme-color" content="#0b1220" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WebToPDF — SageWire</title>
   <style>
     :root{
-      --bg:#071021;
-      --card:#0f1b33;
-      --card2:#0b152b;
-      --border:rgba(255,255,255,.10);
-      --text:#e8eefc;
-      --muted:rgba(232,238,252,.65);
-      --blue:#2f6df6;
-      --blue2:#1f5be6;
-      --green:#23c55e;
-      --red:#ef4444;
-      --amber:#f59e0b;
+      --bg:#070a12; --panel:#0f172a; --panel2:#0b1220;
+      --border:rgba(255,255,255,0.10);
+      --text:#e5e7eb; --muted:#9ca3af;
+      --accent:#22c55e; --warn:#ef4444; --blue:#60a5fa;
     }
     *{box-sizing:border-box}
     body{
-      margin:0;
-      min-height:100vh;
+      margin:0; min-height:100vh;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:radial-gradient(circle at top, #111827 0, #070a12 60%);
+      color:var(--text);
+      padding:16px;
       display:flex;
-      align-items:flex-start;
       justify-content:center;
-      padding:28px 16px;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-      background:
-        radial-gradient(1200px 500px at 80% 0%, rgba(47,109,246,.20), transparent 60%),
-        radial-gradient(1000px 600px at 10% 10%, rgba(34,197,94,.12), transparent 55%),
-        var(--bg);
-      color:var(--text);
+      align-items:flex-start;
     }
-    .wrap{width:min(880px,100%)}
+    .wrap{
+      width:100%; max-width:980px;
+      display:grid; gap:12px;
+      grid-template-columns: 1fr;
+    }
     .card{
-      background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 40%), var(--card);
+      background:linear-gradient(180deg, var(--panel) 0, #070b12 100%);
       border:1px solid var(--border);
-      border-radius:18px;
-      box-shadow:0 30px 80px rgba(0,0,0,.45);
-      padding:20px;
-    }
-    h1{
-      margin:0 0 6px 0;
-      font-size:34px;
-      letter-spacing:.2px;
-    }
-    .sub{color:var(--muted); margin:0 0 18px 0; line-height:1.35}
-    label{display:block; font-weight:650; margin:14px 0 8px 2px; color:rgba(232,238,252,.85)}
-    input{
-      width:100%;
-      padding:14px 14px;
-      border-radius:14px;
-      border:1px solid var(--border);
-      outline:none;
-      background:var(--card2);
-      color:var(--text);
-      font-size:16px;
-    }
-    input::placeholder{color:rgba(232,238,252,.35)}
-    .row{
-      display:flex;
-      gap:12px;
-      flex-wrap:wrap;
-      margin-top:14px;
-    }
-    .btn{
-      border:1px solid var(--border);
-      background:rgba(255,255,255,.04);
-      color:var(--text);
-      padding:12px 14px;
-      border-radius:14px;
-      cursor:pointer;
-      font-weight:700;
-      min-width:140px;
-    }
-    .btn.primary{
-      background:linear-gradient(180deg, rgba(255,255,255,.10), transparent), var(--blue);
-      border-color:rgba(47,109,246,.55);
-    }
-    .btn.primary:hover{background:linear-gradient(180deg, rgba(255,255,255,.12), transparent), var(--blue2)}
-    .btn.danger{border-color:rgba(239,68,68,.35); background:rgba(239,68,68,.10)}
-    .btn:disabled{opacity:.55; cursor:not-allowed}
-    .status{
-      margin-top:14px;
-      padding:12px 14px;
-      border-radius:14px;
-      border:1px solid var(--border);
-      background:rgba(0,0,0,.12);
-      display:flex;
-      gap:10px;
-      align-items:center;
-      color:var(--muted);
-    }
-    .dot{
-      width:10px; height:10px; border-radius:50%;
-      background:rgba(232,238,252,.35);
-      box-shadow:0 0 0 4px rgba(232,238,252,.06);
-      flex:0 0 auto;
-    }
-    .dot.green{background:var(--green); box-shadow:0 0 0 4px rgba(35,197,94,.10)}
-    .dot.red{background:var(--red); box-shadow:0 0 0 4px rgba(239,68,68,.10)}
-    .dot.amber{background:var(--amber); box-shadow:0 0 0 4px rgba(245,158,11,.10)}
-    .fine{
-      margin-top:12px;
-      color:rgba(232,238,252,.55);
-      font-size:13px;
-      line-height:1.35;
-    }
-    .pillrow{
-      margin-top:14px;
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-      opacity:.85;
-      font-size:12px;
-      color:rgba(232,238,252,.55);
-    }
-    .pill{border:1px solid var(--border); background:rgba(255,255,255,.03); padding:7px 10px; border-radius:999px}
-    .link{color:#b9cffd; text-decoration:underline; cursor:pointer}
-    .modalBack{
-      position:fixed; inset:0; background:rgba(0,0,0,.55);
-      display:none; align-items:center; justify-content:center;
-      padding:18px;
-    }
-    .modal{
-      width:min(520px,100%);
-      border-radius:18px;
-      border:1px solid var(--border);
-      background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 40%), var(--card);
-      padding:18px;
-      box-shadow:0 30px 90px rgba(0,0,0,.55);
-    }
-    .modal h2{margin:0 0 8px 0}
-    .packs{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
-    .pack{
-      flex:1 1 150px;
-      border:1px solid var(--border);
-      background:rgba(255,255,255,.04);
       border-radius:16px;
-      padding:12px;
-      cursor:pointer;
+      padding:14px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.35);
     }
-    .pack strong{display:block; font-size:16px}
-    .pack span{display:block; color:rgba(232,238,252,.6); margin-top:4px; font-size:13px}
-    .modal .row{justify-content:flex-end}
+    h1{margin:0 0 6px 0; font-size:22px}
+    .sub{margin:0 0 12px 0; color:var(--muted); font-size:13px; line-height:1.35}
+    label{display:block; font-size:12px; color:var(--muted); margin:10px 0 6px}
+    input{
+      width:100%; padding:12px;
+      background:var(--panel2);
+      border:1px solid var(--border);
+      border-radius:12px;
+      color:var(--text);
+      outline:none;
+    }
+    .row{display:flex; gap:10px; flex-wrap:wrap}
+    .row > *{flex:1 1 260px}
+    button{
+      width:100%;
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:#0b1220;
+      color:var(--text);
+      cursor:pointer;
+      font-weight:650;
+    }
+    button.primary{
+      background:rgba(34,197,94,0.16);
+      border-color:rgba(34,197,94,0.35);
+    }
+    button.blue{
+      background:rgba(96,165,250,0.14);
+      border-color:rgba(96,165,250,0.35);
+    }
+    .msg{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:rgba(0,0,0,0.25);
+      font-size:13px;
+      color:var(--muted);
+      white-space:pre-wrap;
+    }
+    .msg.ok{color:#86efac; border-color:rgba(34,197,94,0.35)}
+    .msg.bad{color:#fca5a5; border-color:rgba(239,68,68,0.35)}
+    .btngrid{display:grid; gap:10px; grid-template-columns:1fr}
+    @media (min-width: 860px){
+      .wrap{grid-template-columns: 1.25fr 0.75fr}
+      .btngrid{grid-template-columns:1fr}
+    }
+    .tiny{font-size:12px; color:var(--muted); margin-top:8px}
+    code{color:#c7d2fe}
   </style>
 </head>
 <body>
   <div class="wrap">
+
+    <!-- LEFT: Tool -->
     <div class="card">
-      <h1>Web → PDF</h1>
+      <h1>WebToPDF</h1>
       <p class="sub">
-        Paste a website URL and your access token. If you have credits, it forges a PDF and downloads it to your device.
+        Paste a URL → get a printable PDF.<br/>
+        Uses credits (tokens). Buy credits below, or paste a token if you already have one.
       </p>
 
-      <label for="url">Website URL</label>
-      <input id="url" placeholder="https://example.com" autocomplete="off" />
+      <label>URL</label>
+      <input id="url" placeholder="https://example.com" />
 
-      <label for="token">Access Token</label>
-      <input id="token" placeholder="PASTE YOUR TOKEN" autocomplete="off" />
+      <label>Token</label>
+      <input id="token" placeholder="16-char token (after purchase)" />
 
       <div class="row">
-        <button class="btn primary" id="btnGo">Generate PDF</button>
-        <button class="btn" id="btnSave">Save Token</button>
-        <button class="btn" id="btnCheck">Check Credits</button>
-        <button class="btn danger" id="btnClear">Clear</button>
+        <button class="primary" id="btnMake">Generate PDF</button>
+        <button class="blue" id="btnCheck">Check Credits</button>
       </div>
 
-      <div class="status" id="statusBox">
-        <div class="dot" id="statusDot"></div>
-        <div id="statusText">Ready.</div>
+      <div id="msg" class="msg">Ready.</div>
+    </div>
+
+    <!-- RIGHT: Buy Credits -->
+    <div class="card">
+      <h1>Buy Credits</h1>
+      <p class="sub">
+        Economy = 10 • Pro = 50 • Platinum = 200<br/>
+        After payment, your token will appear on this page.
+      </p>
+
+      <div class="btngrid">
+        <button class="primary" onclick="buy('economy')">Economy (10)</button>
+        <button class="primary" onclick="buy('pro')">Pro (50)</button>
+        <button class="primary" onclick="buy('platinum')">Platinum (200)</button>
       </div>
 
-      <div class="fine">
-        Credits only burn on success. If a page fails to load, your credits stay intact.
-        <br/>
-        Need credits? <span class="link" id="buyLink">Buy Credits</span>
-      </div>
-
-      <div class="pillrow">
-        <div class="pill">API: /api/web-to-pdf</div>
-        <div class="pill">UI: Stripe V1</div>
+      <div class="tiny">
+        If the token doesn’t show immediately, it means the webhook is still landing.
+        This page will retry automatically for ~30 seconds.
       </div>
     </div>
-  </div>
 
-  <!-- Buy Credits Modal -->
-  <div class="modalBack" id="modalBack">
-    <div class="modal">
-      <h2>Buy Credits</h2>
-      <div style="color:rgba(232,238,252,.65); font-size:13px; line-height:1.35;">
-        Pick a pack. If your token box is empty, we’ll mint a new token and show it after checkout.
-      </div>
-
-      <div class="packs">
-        <div class="pack" data-plan="10pack">
-          <strong>10 Credits</strong>
-          <span>Good for quick testing</span>
-        </div>
-        <div class="pack" data-plan="50pack">
-          <strong>50 Credits</strong>
-          <span>Better value</span>
-        </div>
-        <div class="pack" data-plan="200pack">
-          <strong>200 Credits</strong>
-          <span>Heavy use</span>
-        </div>
-      </div>
-
-      <div class="row" style="margin-top:14px;">
-        <button class="btn" id="btnCloseModal">Close</button>
-      </div>
-    </div>
   </div>
 
 <script>
-  const $ = (id)=>document.getElementById(id);
+  const msg = document.getElementById("msg");
+  const $ = (id) => document.getElementById(id);
 
-  const urlEl = $("url");
-  const tokenEl = $("token");
-
-  const statusBox = $("statusBox");
-  const statusDot = $("statusDot");
-  const statusText = $("statusText");
-
-  const btnGo = $("btnGo");
-  const btnSave = $("btnSave");
-  const btnCheck = $("btnCheck");
-  const btnClear = $("btnClear");
-  const buyLink = $("buyLink");
-
-  const modalBack = $("modalBack");
-  const btnCloseModal = $("btnCloseModal");
-
-  const TOKEN_KEY = "webtopdf_token";
-
-  function setStatus(kind, text){
-    statusText.textContent = text;
-    statusDot.className = "dot";
-    if(kind==="ok") statusDot.classList.add("green");
-    if(kind==="err") statusDot.classList.add("red");
-    if(kind==="work") statusDot.classList.add("amber");
+  function setMsg(text, ok=null){
+    msg.textContent = text;
+    msg.className = "msg" + (ok === true ? " ok" : ok === false ? " bad" : "");
   }
 
-  function disableWorking(on){
-    btnGo.disabled = on;
-    btnSave.disabled = on;
-    btnCheck.disabled = on;
-    btnClear.disabled = on;
-    btnGo.textContent = on ? "Working..." : "Generate PDF";
+  async function jpost(url, body){
+    const r = await fetch(url, {
+      method:"POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(body || {})
+    });
+    if(!r.ok){
+      let t = await r.text();
+      try{ t = JSON.parse(t); }catch{}
+      throw new Error(typeof t === "string" ? t : (t.detail || "Request failed"));
+    }
+    const ct = r.headers.get("content-type") || "";
+    if(ct.includes("application/json")) return await r.json();
+    return await r.text();
   }
 
-  function saveToken(){
-    const t = (tokenEl.value || "").trim();
-    if(!t){ setStatus("err","No token to save."); return; }
-    localStorage.setItem(TOKEN_KEY, t);
-    setStatus("ok","Token saved.");
+  async function jget(url){
+    const r = await fetch(url, {method:"GET"});
+    const t = await r.text();
+    try{ return JSON.parse(t); }catch{ return t; }
   }
 
-  function loadToken(){
-    const t = localStorage.getItem(TOKEN_KEY) || "";
-    if(t && !tokenEl.value) tokenEl.value = t;
-  }
-
-  async function checkCredits(){
-    const token = (tokenEl.value||"").trim();
-    if(!token){ setStatus("err","Paste a token first."); return; }
-    disableWorking(true);
-    setStatus("work","Checking credits...");
+  // Buy credits -> create checkout session -> redirect
+  async function buy(tier){
     try{
-      const r = await fetch(`/api/credits?token=${encodeURIComponent(token)}`);
-      const j = await r.json();
-      if(!j.ok || !j.valid){
-        setStatus("err","Invalid token.");
-      }else{
-        setStatus("ok",`Credits remaining: ${j.remaining}`);
-      }
+      setMsg("Opening Stripe Checkout…", true);
+      const data = await jpost("/api/stripe/create-checkout-session", {tier});
+      window.location.href = data.url;
     }catch(e){
-      setStatus("err","Credits check failed.");
-    }finally{
-      disableWorking(false);
+      setMsg("Buy failed: " + e.message, false);
     }
   }
 
-  async function generatePdf(){
-    const url = (urlEl.value||"").trim();
-    const token = (tokenEl.value||"").trim();
-    if(!url){ setStatus("err","Paste a website URL."); return; }
-    if(!/^https?:\/\//i.test(url)){ setStatus("err","URL must start with http:// or https://"); return; }
-    if(!token){ setStatus("err","Paste your access token."); return; }
-
-    disableWorking(true);
-    setStatus("work","Forging PDF...");
-
+  // Generate PDF
+  $("btnMake").onclick = async () => {
     try{
-      const r = await fetch("/api/web-to-pdf",{
+      const url = $("url").value.trim();
+      const token = $("token").value.trim();
+      if(!url) throw new Error("Paste a URL first.");
+      if(!token) throw new Error("Paste a token first (buy credits if needed).");
+
+      setMsg("Rendering PDF… (this can take a bit on heavy pages)", true);
+
+      const r = await fetch("/api/web-to-pdf", {
         method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ url, token })
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({url, token})
       });
 
       if(!r.ok){
-        let msg = "PDF failed.";
-        try{
-          const j = await r.json();
-          msg = j.detail || msg;
-        }catch(_){}
-        setStatus("err", msg);
-        return;
+        const t = await r.text();
+        let j; try{ j = JSON.parse(t); }catch{}
+        throw new Error((j && j.detail) ? j.detail : t);
       }
 
-      const remaining = r.headers.get("X-Credits-Remaining");
       const blob = await r.blob();
-
-      const cd = r.headers.get("Content-Disposition") || "";
-      let filename = "webtopdf.pdf";
-      const m = cd.match(/filename="([^"]+)"/i);
-      if(m && m[1]) filename = m[1];
+      const job = r.headers.get("X-Job-Id") || "PDF";
+      const remain = r.headers.get("X-Credits-Remaining");
 
       const a = document.createElement("a");
-      const objectUrl = URL.createObjectURL(blob);
-      a.href = objectUrl;
-      a.download = filename;
+      a.href = URL.createObjectURL(blob);
+      a.download = `webtopdf_${job}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      URL.revokeObjectURL(objectUrl);
 
-      if(remaining !== null){
-        setStatus("ok", `PDF ready. Credits remaining: ${remaining}`);
-      }else{
-        setStatus("ok","PDF ready.");
-      }
-
-      // auto-save token after success
-      localStorage.setItem(TOKEN_KEY, token);
-
+      setMsg(`PDF ready. Job: ${job}\nCredits remaining: ${remain ?? "?"}`, true);
     }catch(e){
-      setStatus("err","Network error. Try again.");
-    }finally{
-      disableWorking(false);
+      setMsg("PDF failed: " + e.message, false);
     }
-  }
+  };
 
-  function openModal(){ modalBack.style.display = "flex"; }
-  function closeModal(){ modalBack.style.display = "none"; }
-
-  async function startCheckout(plan){
-    const token = (tokenEl.value||"").trim(); // can be empty
-    disableWorking(true);
-    setStatus("work","Opening checkout...");
+  // Check credits
+  $("btnCheck").onclick = async () => {
     try{
-      const r = await fetch("/api/stripe/create-checkout-session",{
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ plan, token })
-      });
-      const j = await r.json();
-      if(!j.ok || !j.checkout_url){
-        setStatus("err", j.detail || "Stripe checkout failed.");
+      const token = $("token").value.trim();
+      if(!token) throw new Error("Paste a token first.");
+      const data = await jget("/api/credits?token="+encodeURIComponent(token));
+      if(!data.ok) throw new Error("Token not found.");
+      setMsg(`Token OK\nPlan: ${data.plan}\nRemaining: ${data.remaining}\nLast used: ${data.last_used_at_utc || "(never)"}`, true);
+    }catch(e){
+      setMsg("Credits check failed: " + e.message, false);
+    }
+  };
+
+  // Success/cancel handling
+  async function tryFetchToken(sessionId){
+    const start = Date.now();
+    while(Date.now() - start < 30000){
+      const data = await jget("/api/stripe/session-result?session_id="+encodeURIComponent(sessionId));
+      if(data && data.ready){
+        $("token").value = data.token || "";
+        setMsg(`Payment confirmed.\nTier: ${data.tier}\nCredits: ${data.credits}\n\nYour token:\n${data.token}\n\nPaste URL + press Generate PDF.`, true);
         return;
       }
-      // If token was empty, backend minted one — store it now
-      if(j.token){
-        tokenEl.value = j.token;
-        localStorage.setItem(TOKEN_KEY, j.token);
-      }
-      window.location.href = j.checkout_url;
-    }catch(e){
-      setStatus("err","Stripe request failed.");
-    }finally{
-      disableWorking(false);
-      closeModal();
+      setMsg("Payment confirmed. Waiting for token…", true);
+      await new Promise(res => setTimeout(res, 1200));
     }
+    setMsg("Payment confirmed, but token is taking too long to appear. Refresh this page in 15 seconds.", false);
   }
 
-  async function handleStripeReturn(){
-    const params = new URLSearchParams(window.location.search);
-    const success = params.get("success");
-    const canceled = params.get("canceled");
-    const sessionId = params.get("session_id");
+  (function init(){
+    const qs = new URLSearchParams(window.location.search);
+    const cancel = qs.get("cancel");
+    const success = qs.get("success");
+    const sessionId = qs.get("session_id");
 
-    if(canceled){
-      setStatus("err","Checkout canceled.");
+    if(cancel){
+      setMsg("Checkout cancelled. No charge was made.", false);
       return;
     }
-
     if(success && sessionId){
-      disableWorking(true);
-      setStatus("work","Payment received. Finalizing credits...");
-      try{
-        const r = await fetch(`/api/stripe/session-result?session_id=${encodeURIComponent(sessionId)}`);
-        const j = await r.json();
-        if(j.ok && j.found){
-          if(j.token){
-            tokenEl.value = j.token;
-            localStorage.setItem(TOKEN_KEY, j.token);
-          }
-          if(j.remaining !== null && j.remaining !== undefined){
-            setStatus("ok", `Credits updated. Remaining: ${j.remaining}`);
-          }else{
-            setStatus("ok","Credits updated.");
-          }
-        }else{
-          setStatus("work","Payment done. Waiting on webhook... try Check Credits in a moment.");
-        }
-      }catch(e){
-        setStatus("work","Payment done. Waiting on webhook... try Check Credits in a moment.");
-      }finally{
-        disableWorking(false);
-        // Clean URL so refresh doesn't re-run
-        window.history.replaceState({}, document.title, "/");
-      }
+      tryFetchToken(sessionId);
     }
-  }
-
-  // Wire up buttons
-  btnGo.addEventListener("click", generatePdf);
-  btnSave.addEventListener("click", saveToken);
-  btnCheck.addEventListener("click", checkCredits);
-  btnClear.addEventListener("click", ()=>{
-    urlEl.value = "";
-    tokenEl.value = "";
-    localStorage.removeItem(TOKEN_KEY);
-    setStatus("ok","Cleared.");
-  });
-
-  buyLink.addEventListener("click", openModal);
-  btnCloseModal.addEventListener("click", closeModal);
-  modalBack.addEventListener("click", (e)=>{ if(e.target === modalBack) closeModal(); });
-
-  document.querySelectorAll(".pack").forEach(el=>{
-    el.addEventListener("click", ()=> startCheckout(el.getAttribute("data-plan")));
-  });
-
-  // Startup
-  loadToken();
-  handleStripeReturn();
+  })();
 </script>
+
 </body>
 </html>
