@@ -197,13 +197,23 @@ def _stripe_prices_ok() -> bool:
 
 def _tier_to_price_and_credits(tier: str) -> Dict[str, Any]:
     t = (tier or "").strip().lower()
+
     if t in ("economy", "eco", "10", "10pack"):
+        if not PRICE_ECONOMY:
+            raise HTTPException(status_code=500, detail="Missing STRIPE_PRICE_ECONOMY (PRICE_ECONOMY is blank).")
         return {"tier": "Economy", "price_id": PRICE_ECONOMY, "credits": 10}
+
     if t in ("pro", "professional", "50", "50pack"):
+        if not PRICE_PRO:
+            raise HTTPException(status_code=500, detail="Missing STRIPE_PRICE_PRO (PRICE_PRO is blank).")
         return {"tier": "Pro", "price_id": PRICE_PRO, "credits": 50}
+
     if t in ("platinum", "plat", "200", "200pack"):
+        if not PRICE_PLATINUM:
+            raise HTTPException(status_code=500, detail="Missing STRIPE_PRICE_PLATINUM (PRICE_PLATINUM is blank).")
         return {"tier": "Platinum", "price_id": PRICE_PLATINUM, "credits": 200}
-    raise HTTPException(status_code=400, detail="Bad tier. Use economy | pro | platinum.")
+
+    raise HTTPException(status_code=400, detail="Bad tier. Use economy | pro | platinum (or 10/50/200).")
 
 
 def _log_has_session(ws, session_id: str) -> bool:
