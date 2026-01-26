@@ -2,15 +2,19 @@
 # WebToPDF – single-file backend (FastAPI) with:
 # - /api/web-to-pdf (Playwright PDF)
 # - token/credits gate + burn-on-success
-# - Stripe Checkout session creation + webhook mint
-# - Jobs log sheet (start + finish + error)
+# - Stripe Checkout session creation + webhook token mint
+# - Stripe log sheet + Jobs log sheet
 #
 # ENV VARS REQUIRED:
 #   VOYDS_FORMS_SHEET_ID
 #   GOOGLE_SERVICE_ACCOUNT_JSON
-#   VOYDS_TOKENS_TAB            (default: WebToPDF_Tokens)
-#   VOYDS_STRIPE_LOG_TAB        (default: WebToPDF_StripeLog)
-#   VOYDS_JOBS_TAB              (default: WebToPDF_Jobs)   <-- add this
+#
+# OPTIONAL TAB NAMES (defaults shown):
+#   VOYDS_TOKENS_TAB          = WebToPDF_Tokens
+#   VOYDS_STRIPE_LOG_TAB      = WebToPDF_StripeLog
+#   VOYDS_JOBS_TAB            = WebToPDF_Jobs
+#
+# ADMIN:
 #   ADMIN_KEY
 #
 # STRIPE:
@@ -18,16 +22,16 @@
 #   STRIPE_WEBHOOK_SECRET
 #   STRIPE_SUCCESS_URL
 #   STRIPE_CANCEL_URL
-#   STRIPE_PRICE_ECONOMY
-#   STRIPE_PRICE_PRO
-#   STRIPE_PRICE_PLATINUM
+#   STRIPE_PRICE_ECONOMY      (10 credits)
+#   STRIPE_PRICE_PRO          (50 credits)
+#   STRIPE_PRICE_PLATINUM     (200 credits)
 
 import os
 import json
 import uuid
 import secrets
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, List
 
 from fastapi import FastAPI, Body, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -46,7 +50,7 @@ app = FastAPI(title="WebToPDF API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # tighten later if you want
+    allow_origins=["*"],  # tighten later if you want
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -70,12 +74,34 @@ STRIPE_WEBHOOK_SECRET = (os.getenv("STRIPE_WEBHOOK_SECRET") or "").strip()
 SUCCESS_URL = (os.getenv("STRIPE_SUCCESS_URL") or "").strip()
 CANCEL_URL = (os.getenv("STRIPE_CANCEL_URL") or "").strip()
 
-PRICE_ECONOMY = (os.getenv("STRIPE_PRICE_ECONOMY") or "").strip()      # 10 credits
-PRICE_PRO = (os.getenv("STRIPE_PRICE_PRO") or "").strip()              # 50 credits
-PRICE_PLATINUM = (os.getenv("STRIPE_PRICE_PLATINUM") or "").strip()    # 200 credits
+PRICE_ECONOMY = (os.getenv("STRIPE_PRICE_ECONOMY") or "").strip()     # 10 credits
+PRICE_PRO = (os.getenv("STRIPE_PRICE_PRO") or "").strip()             # 50 credits
+PRICE_PLATINUM = (os.getenv("STRIPE_PRICE_PLATINUM") or "").strip()   # 200 credits
 
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
+
+
+# -----------------------
+# Headers (Google Sheets)
+# -----------------------
+TOKENS_HEADERS = ["token", "plan", "remaining", "created_at_utc", "last_used_at_utc", "note"]
+
+STRIPE_LOG_HEADERS = ["session_id", "paid_at_utc", "tier", "credits", "token", "customer_email"]
+
+JOBS_HEADERS = [
+    "job_id",
+    "created_at_utc",
+    "finished_at_utc",
+    "url",
+    "status",
+    "pdf_filename",
+    "error",
+    "token",
+    "plan",
+    "credits_before",
+    "credits_after",
+]
 
 
 # -----------------------
@@ -91,21 +117,24 @@ def _is_probably_url(u: str) -> bool:
 
 
 def _mint_token(prefix: str = "") -> str:
-    # stable, short-ish token; you can change prefix later if you want
-    core = secrets.token_hex(8).upper()
+    core = secrets.token_hex(8).upper()  # 16 chars
     return f"{prefix}{core}" if prefix else core
 
 
-def _parse_remaining(s: str) -> int:
+def _parse_int_strict(s: Any) -> Optional[int]:
+    s = str(s).strip()
+    if s == "":
+        return None
     try:
-        return int(str(s).strip())
+        return int(s)
     except Exception:
-        return 0
+        return None
 
 
 def _stripe_prices_ok() -> bool:
     return bool(
         STRIPE_SECRET_KEY
+        and STRIPE_WEBHOOK_SECRET
         and PRICE_ECONOMY
         and PRICE_PRO
         and PRICE_PLATINUM
@@ -115,7 +144,7 @@ def _stripe_prices_ok() -> bool:
 
 
 # -----------------------
-# Google Sheets Client
+# Google Sheets Client (cached)
 # -----------------------
 _gc_client: Optional[gspread.Client] = None
 _sheet_cache: Optional[gspread.Spreadsheet] = None
@@ -153,33 +182,39 @@ def _get_sheet() -> gspread.Spreadsheet:
     return sh
 
 
-def _ws(tab_name: str) -> gspread.Worksheet:
+def _ws(tab_name: str, headers: Optional[List[str]] = None) -> gspread.Worksheet:
     sh = _get_sheet()
+
     try:
-        return sh.worksheet(tab_name)
+        ws = sh.worksheet(tab_name)
     except Exception:
-        raise HTTPException(status_code=500, detail=f"Missing worksheet tab: {tab_name}")
+        cols = max(1, len(headers or []))
+        ws = sh.add_worksheet(title=tab_name, rows=2000, cols=cols)
+
+    if headers:
+        existing = ws.row_values(1)
+        if existing != headers:
+            ws.update("A1", [headers])
+
+    return ws
 
 
 def _get_tokens_ws() -> gspread.Worksheet:
-    return _ws(TOKENS_TAB)
+    return _ws(TOKENS_TAB, TOKENS_HEADERS)
 
 
 def _get_stripe_log_ws() -> gspread.Worksheet:
-    return _ws(STRIPE_LOG_TAB)
+    return _ws(STRIPE_LOG_TAB, STRIPE_LOG_HEADERS)
 
 
 def _get_jobs_ws() -> gspread.Worksheet:
-    return _ws(JOBS_TAB)
+    return _ws(JOBS_TAB, JOBS_HEADERS)
 
 
 # -----------------------
-# Tokens Table Logic
-# Expected headers:
-# token | plan | remaining | created_at_utc | last_used_at_utc | note
+# Tokens logic
 # -----------------------
-def _get_all_records(ws: gspread.Worksheet) -> list[dict]:
-    # gspread get_all_records assumes header row exists
+def _get_all_records(ws: gspread.Worksheet) -> List[Dict[str, Any]]:
     try:
         return ws.get_all_records()
     except Exception:
@@ -187,17 +222,21 @@ def _get_all_records(ws: gspread.Worksheet) -> list[dict]:
 
 
 def _find_row_index_by_token(ws: gspread.Worksheet, token: str) -> Optional[int]:
-    # token is in col A (1)
+    token = (token or "").strip()
     if not token:
         return None
     try:
         cell = ws.find(token)
-        return cell.row if cell else None
     except Exception:
         return None
 
+    # must be col A, not header
+    if not cell or cell.col != 1 or cell.row <= 1:
+        return None
+    return cell.row
 
-def _get_token_record(ws: gspread.Worksheet, token: str) -> Optional[dict]:
+
+def _get_token_record(ws: gspread.Worksheet, token: str) -> Optional[Dict[str, Any]]:
     token = (token or "").strip()
     if not token:
         return None
@@ -208,11 +247,7 @@ def _get_token_record(ws: gspread.Worksheet, token: str) -> Optional[dict]:
     return None
 
 
-def _allow_only(ws: gspread.Worksheet, token: str) -> dict:
-    """
-    Gate only. Returns a struct we can later burn.
-    - remaining = -1 means unlimited
-    """
+def _allow_only(ws: gspread.Worksheet, token: str) -> Dict[str, Any]:
     token = (token or "").strip()
     if not token:
         raise HTTPException(status_code=401, detail="Missing token.")
@@ -221,47 +256,38 @@ def _allow_only(ws: gspread.Worksheet, token: str) -> dict:
     if not rec:
         raise HTTPException(status_code=401, detail="Invalid token.")
 
-    remaining_i = _parse_remaining(rec.get("remaining", "0"))
-    if remaining_i == 0:
-        raise HTTPException(status_code=402, detail="No credits remaining.")
+    remaining_i = _parse_int_strict(rec.get("remaining", ""))
+    if remaining_i is None:
+        raise HTTPException(status_code=402, detail="Token record invalid (remaining not a number).")
 
     row_index = _find_row_index_by_token(ws, token)
     if not row_index:
         raise HTTPException(status_code=500, detail="Token row not found for update.")
 
-    return {
-        "token": token,
-        "row_index": row_index,
-        "plan": rec.get("plan", ""),
-        "remaining_before": remaining_i,
-    }
+    # Unlimited
+    if remaining_i == -1:
+        return {"token": token, "row_index": row_index, "plan": rec.get("plan", ""), "remaining_before": -1}
+
+    if remaining_i <= 0:
+        raise HTTPException(status_code=402, detail="No credits remaining.")
+
+    return {"token": token, "row_index": row_index, "plan": rec.get("plan", ""), "remaining_before": remaining_i}
 
 
-def _burn_one_credit(ws: gspread.Worksheet, allow: dict) -> dict:
-    """
-    Decrement remaining by 1 (unless unlimited), and set last_used_at_utc.
-    Returns remaining_after.
-    """
+def _burn_one_credit(ws: gspread.Worksheet, allow: Dict[str, Any]) -> Dict[str, Any]:
     row = int(allow["row_index"])
     remaining_before = int(allow["remaining_before"])
     token = allow["token"]
 
+    # unlimited
     if remaining_before == -1:
-        # unlimited
         ws.update_cell(row, 5, _utc_now_iso())  # last_used_at_utc
         return {"token": token, "remaining_before": -1, "remaining_after": -1}
 
     remaining_after = max(0, remaining_before - 1)
 
-    # Column mapping:
-    # A token (1)
-    # B plan (2)
-    # C remaining (3)
-    # D created_at_utc (4)
-    # E last_used_at_utc (5)
-    # F note (6)
-    ws.update_cell(row, 3, str(remaining_after))
-    ws.update_cell(row, 5, _utc_now_iso())
+    ws.update_cell(row, 3, str(remaining_after))  # remaining (col C)
+    ws.update_cell(row, 5, _utc_now_iso())        # last_used_at_utc (col E)
     return {"token": token, "remaining_before": remaining_before, "remaining_after": remaining_after}
 
 
@@ -278,67 +304,51 @@ def _create_token_in_sheet(credits: int, plan_name: str, note: str, email: str =
 
 
 # -----------------------
-# Jobs Log Logic
-# Expected headers (what you already created):
-# job_id | created_at_utc | finished_at_utc | url | status | pdf_filename | error | token | plan | credits_before | credits_after
+# Jobs log logic
 # -----------------------
 def _jobs_find_row(ws: gspread.Worksheet, job_id: str) -> Optional[int]:
+    if not job_id:
+        return None
     try:
         cell = ws.find(job_id)
-        return cell.row if cell else None
     except Exception:
         return None
+    if not cell or cell.col != 1 or cell.row <= 1:
+        return None
+    return cell.row
 
 
-def _jobs_append_start(ws: gspread.Worksheet, job_id: str, url: str, token: str, plan: str, credits_before: int) -> int:
-    # Write a "started" row immediately
+def _jobs_append_start(ws: gspread.Worksheet, job_id: str, url: str, token: str, plan: str, credits_before: int) -> None:
     row = [
         job_id,
-        _utc_now_iso(),     # created_at_utc
-        "",                 # finished_at_utc
+        _utc_now_iso(),   # created_at_utc
+        "",               # finished_at_utc
         url,
         "started",
-        "",                 # pdf_filename
-        "",                 # error
+        "",               # pdf_filename
+        "",               # error
         token,
         plan,
         str(credits_before),
-        "",                 # credits_after
+        "",               # credits_after
     ]
     ws.append_row(row, value_input_option="RAW")
-    # return row index
-    idx = _jobs_find_row(ws, job_id)
-    return idx or 0
 
 
 def _jobs_update_finish(
     ws: gspread.Worksheet,
     job_id: str,
     status: str,
-    pdf_filename: str,
-    error: str,
-    credits_after: Optional[int],
+    pdf_filename: str = "",
+    error: str = "",
+    credits_after: Optional[int] = None,
 ) -> None:
     row = _jobs_find_row(ws, job_id)
     if not row:
-        # If we cannot find it, don't crash the request; best-effort logging.
         return
 
-    finished = _utc_now_iso()
-    # Columns:
-    # A job_id (1)
-    # B created_at_utc (2)
-    # C finished_at_utc (3)
-    # D url (4)
-    # E status (5)
-    # F pdf_filename (6)
-    # G error (7)
-    # H token (8)
-    # I plan (9)
-    # J credits_before (10)
-    # K credits_after (11)
-    ws.update_cell(row, 3, finished)
-    ws.update_cell(row, 5, status)
+    ws.update_cell(row, 3, _utc_now_iso())  # finished_at_utc
+    ws.update_cell(row, 5, status)          # status
     ws.update_cell(row, 6, pdf_filename or "")
     ws.update_cell(row, 7, error or "")
     if credits_after is not None:
@@ -346,21 +356,39 @@ def _jobs_update_finish(
 
 
 # -----------------------
-# Pricing tier mapping (supports BOTH label names and numeric inputs)
+# Stripe log helpers
+# -----------------------
+def _log_has_session(ws: gspread.Worksheet, session_id: str) -> bool:
+    if not session_id:
+        return False
+    try:
+        cell = ws.find(session_id)
+        return bool(cell and cell.row > 1 and cell.col == 1)
+    except Exception:
+        return False
+
+
+def _log_get_by_session(ws: gspread.Worksheet, session_id: str) -> Optional[Dict[str, Any]]:
+    recs = _get_all_records(ws)
+    for r in recs:
+        if str(r.get("session_id", "")).strip() == session_id:
+            return r
+    return None
+
+
+# -----------------------
+# Pricing tier mapping (accepts both labels and numbers)
 # -----------------------
 def _tier_to_price_and_credits(tier: str) -> Dict[str, Any]:
     t = (tier or "").strip().lower()
 
-    # Economy / 10
-    if t in ("economy", "eco", "10", "10pack", "10_credits", "10credits"):
+    if t in ("economy", "eco", "10", "10pack", "10credits", "10_credits"):
         return {"tier": "Economy", "price_id": PRICE_ECONOMY, "credits": 10}
 
-    # Pro / 50
-    if t in ("pro", "professional", "50", "50pack", "50_credits", "50credits"):
+    if t in ("pro", "professional", "50", "50pack", "50credits", "50_credits"):
         return {"tier": "Pro", "price_id": PRICE_PRO, "credits": 50}
 
-    # Platinum / 200
-    if t in ("platinum", "plat", "200", "200pack", "200_credits", "200credits"):
+    if t in ("platinum", "plat", "200", "200pack", "200credits", "200_credits"):
         return {"tier": "Platinum", "price_id": PRICE_PLATINUM, "credits": 200}
 
     raise HTTPException(status_code=400, detail="Bad tier. Use economy | pro | platinum (or 10 | 50 | 200).")
@@ -377,6 +405,7 @@ def health():
         "time": _utc_now_iso(),
         "sheets_configured": bool(SHEET_ID and SERVICE_JSON),
         "tokens_tab": TOKENS_TAB,
+        "stripe_log_tab": STRIPE_LOG_TAB,
         "jobs_tab": JOBS_TAB,
         "stripe_ready": _stripe_prices_ok(),
     }
@@ -388,7 +417,7 @@ def credits(token: str):
     rec = _get_token_record(ws, token)
     if not rec:
         return {"ok": False, "token": token, "valid": False}
-    remaining_i = _parse_remaining(rec.get("remaining", ""))
+    remaining_i = _parse_int_strict(rec.get("remaining", ""))
     return {
         "ok": True,
         "valid": True,
@@ -411,9 +440,8 @@ def admin_create_token(payload: dict = Body(...)):
     if not ADMIN_KEY:
         raise HTTPException(status_code=500, detail="ADMIN_KEY not set on server.")
 
-    try:
-        remaining_i = int(requested_remaining)
-    except Exception:
+    remaining_i = _parse_int_strict(requested_remaining)
+    if remaining_i is None:
         raise HTTPException(status_code=400, detail="remaining must be an integer (use -1 for unlimited).")
 
     ws = _get_tokens_ws()
@@ -450,7 +478,7 @@ def web_to_pdf(payload: dict = Body(...)):
     job_id = uuid.uuid4().hex[:10].upper()
     filename = f"webtopdf_{job_id}.pdf"
 
-    # Write job start immediately
+    # Log START
     _jobs_append_start(
         jobs_ws,
         job_id=job_id,
@@ -460,7 +488,6 @@ def web_to_pdf(payload: dict = Body(...)):
         credits_before=int(allow.get("remaining_before", 0)),
     )
 
-    pdf_bytes = b""
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(
@@ -481,29 +508,16 @@ def web_to_pdf(payload: dict = Body(...)):
                 browser.close()
 
     except PWTimeoutError:
-        _jobs_update_finish(
-            jobs_ws,
-            job_id=job_id,
-            status="timeout",
-            pdf_filename="",
-            error="Timed out loading page.",
-            credits_after=None,
-        )
+        _jobs_update_finish(jobs_ws, job_id=job_id, status="timeout", error="Timed out loading page.")
         raise HTTPException(status_code=408, detail="Timed out loading page. Try again or use a simpler URL.")
     except Exception as e:
-        _jobs_update_finish(
-            jobs_ws,
-            job_id=job_id,
-            status="error",
-            pdf_filename="",
-            error=f"PDF generation failed: {str(e)}",
-            credits_after=None,
-        )
+        _jobs_update_finish(jobs_ws, job_id=job_id, status="error", error=f"PDF generation failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
 
-    # Success: burn one credit now
+    # Burn credit ONLY on success
     credit_info = _burn_one_credit(tokens_ws, allow)
 
+    # Log SUCCESS
     _jobs_update_finish(
         jobs_ws,
         job_id=job_id,
@@ -530,7 +544,7 @@ def web_to_pdf(payload: dict = Body(...)):
 @app.post("/api/stripe/create-checkout-session")
 def stripe_create_checkout_session(payload: dict = Body(...)):
     if not _stripe_prices_ok():
-        raise HTTPException(status_code=500, detail="Stripe not configured. Missing keys/price IDs/success URLs.")
+        raise HTTPException(status_code=500, detail="Stripe not configured. Missing keys/price IDs/success/cancel URLs.")
 
     tier = (payload.get("tier") or "").strip()
     info = _tier_to_price_and_credits(tier)
@@ -572,30 +586,27 @@ async def stripe_webhook(request: Request):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid Stripe signature.")
 
-    # We only care about successful payments
-    if event["type"] != "checkout.session.completed":
-        return {"ok": True, "ignored": True, "type": event["type"]}
+    # Only care about successful payments
+    if event.get("type") != "checkout.session.completed":
+        return {"ok": True, "ignored": True, "type": event.get("type")}
 
     session = event["data"]["object"]
     session_id = session.get("id", "")
+
     customer_email = (session.get("customer_details", {}) or {}).get("email", "") or ""
 
     meta = session.get("metadata", {}) or {}
     tier = meta.get("tier", "Unknown")
     credits_s = meta.get("credits", "0")
+    credits_i = _parse_int_strict(credits_s) or 0
 
-    try:
-        credits_i = int(credits_s)
-    except Exception:
-        credits_i = 0
+    log_ws = _get_stripe_log_ws()
 
     # Dedupe
-    log_ws = _get_stripe_log_ws()
-    existing = _log_has_session(log_ws, session_id)
-    if existing:
+    if _log_has_session(log_ws, session_id):
         return {"ok": True, "deduped": True, "session_id": session_id}
 
-    # Mint token in tokens sheet
+    # Mint token (credits)
     token = _create_token_in_sheet(
         credits=credits_i,
         plan_name=f"Stripe {tier}",
@@ -603,7 +614,7 @@ async def stripe_webhook(request: Request):
         email=customer_email,
     )
 
-    # Log for success-page lookup
+    # Log session
     log_ws.append_row(
         [session_id, _utc_now_iso(), tier, str(credits_i), token, customer_email],
         value_input_option="RAW",
@@ -612,35 +623,14 @@ async def stripe_webhook(request: Request):
     return {"ok": True, "session_id": session_id, "token_minted": True}
 
 
-def _log_has_session(ws: gspread.Worksheet, session_id: str) -> bool:
-    if not session_id:
-        return False
-    try:
-        ws.find(session_id)
-        return True
-    except Exception:
-        return False
-
-
-def _log_get_by_session(ws: gspread.Worksheet, session_id: str) -> Optional[dict]:
-    # expected headers:
-    # session_id | paid_at_utc | tier | credits | token | customer_email
-    recs = _get_all_records(ws)
-    for r in recs:
-        if str(r.get("session_id", "")).strip() == session_id:
-            return r
-    return None
-
-
 # -----------------------
-# Stripe: success page lookup (front-end calls this)
+# Stripe: success page lookup
 # -----------------------
 @app.get("/api/stripe/session-result")
 def stripe_session_result(session_id: str):
     log_ws = _get_stripe_log_ws()
     rec = _log_get_by_session(log_ws, session_id)
     if not rec:
-        # webhook might not have landed yet; front-end can retry
         return {"ok": False, "ready": False}
     return {
         "ok": True,
