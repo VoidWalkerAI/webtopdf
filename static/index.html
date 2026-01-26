@@ -3,363 +3,451 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Web → PDF — Buy Credits</title>
+  <title>Web → PDF (Credits + Converter)</title>
   <meta name="theme-color" content="#0b1220" />
   <style>
     :root{
       --bg:#0b1220;
-      --card:#111b2e;
-      --card2:#0f172a;
-      --border:rgba(255,255,255,.10);
-      --text:rgba(255,255,255,.92);
-      --muted:rgba(255,255,255,.65);
-      --accent:#3b82f6;
-      --accent2:#22c55e;
-      --danger:#ef4444;
+      --card:#111a2e;
+      --card2:#0f1730;
+      --text:#e7eefc;
+      --muted:#9bb0d3;
+      --line:rgba(255,255,255,.08);
+      --btn:#2d6bff;
+      --btn2:#1d4ed8;
+      --ok:#22c55e;
       --warn:#f59e0b;
+      --bad:#ef4444;
     }
     *{box-sizing:border-box}
     body{
       margin:0;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-      background:radial-gradient(1200px 700px at 20% 0%, #142044 0%, var(--bg) 55%) fixed;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:radial-gradient(1200px 600px at 20% 0%, #15224a 0%, var(--bg) 60%);
       color:var(--text);
-      min-height:100vh;
     }
-    .wrap{max-width:920px;margin:0 auto;padding:28px 16px 60px}
-    .hero{
-      padding:18px 18px 0;
-      display:flex;flex-direction:column;gap:10px;
+    .wrap{max-width:980px;margin:0 auto;padding:20px 16px 60px}
+    h1{margin:10px 0 6px;font-size:34px;letter-spacing:.2px}
+    .sub{color:var(--muted);margin:0 0 16px;line-height:1.35}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 18px}
+    .pill{
+      display:inline-flex;gap:8px;align-items:center;
+      padding:10px 12px;border:1px solid var(--line);
+      border-radius:999px;background:rgba(255,255,255,.03);
+      color:var(--muted);font-size:13px
     }
-    h1{margin:0;font-size:28px;letter-spacing:.2px}
-    .sub{color:var(--muted);margin:0;line-height:1.4}
-    .grid{
-      display:grid;
-      grid-template-columns:repeat(3, minmax(0,1fr));
-      gap:14px;
-      margin-top:18px;
-    }
-    @media (max-width:860px){ .grid{grid-template-columns:1fr} }
+    .grid{display:grid;gap:14px}
+    @media(min-width:860px){.grid{grid-template-columns:1fr 1fr}}
     .card{
-      background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-      border:1px solid var(--border);
+      border:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
       border-radius:18px;
       padding:16px;
-      box-shadow:0 12px 35px rgba(0,0,0,.35);
+      box-shadow:0 10px 30px rgba(0,0,0,.25);
     }
-    .tier{font-size:14px;color:var(--muted)}
-    .price{font-size:30px;margin:8px 0 2px}
-    .credits{color:var(--muted);margin:0 0 12px}
+    .card h2{margin:0 0 10px;font-size:18px}
+    .price{font-size:34px;margin:2px 0 0}
+    .muted{color:var(--muted)}
     .btn{
       width:100%;
-      border:0;
+      padding:14px 14px;
       border-radius:14px;
-      padding:12px 14px;
-      font-size:15px;
-      font-weight:650;
-      background:var(--accent);
+      border:1px solid rgba(255,255,255,.12);
+      background:linear-gradient(180deg,var(--btn),var(--btn2));
       color:white;
+      font-weight:700;
       cursor:pointer;
+      font-size:15px;
     }
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .pill{
-      display:inline-flex;align-items:center;gap:8px;
-      padding:8px 10px;border-radius:999px;
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+    .btn.secondary{
       background:rgba(255,255,255,.06);
-      border:1px solid var(--border);
-      color:var(--muted);
-      font-size:13px;
+      border:1px solid var(--line);
+      font-weight:650;
     }
-    .panel{
-      margin-top:16px;
-      background:rgba(17,27,46,.65);
-      border:1px solid var(--border);
-      border-radius:18px;
-      padding:16px;
-    }
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .row > * {flex:1}
-    input{
+    .btn.small{padding:10px 12px;border-radius:12px;font-size:14px}
+    .field{display:flex;gap:10px;flex-wrap:wrap}
+    input, textarea{
       width:100%;
       padding:12px 12px;
-      border-radius:14px;
-      border:1px solid var(--border);
-      background:rgba(0,0,0,.20);
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.18);
       color:var(--text);
       outline:none;
+      font-size:15px;
     }
-    .btn2{
-      border:1px solid var(--border);
-      background:rgba(255,255,255,.06);
-      color:var(--text);
-      border-radius:14px;
-      padding:12px 14px;
-      font-weight:650;
-      cursor:pointer;
-      min-width:160px;
+    input::placeholder{color:rgba(155,176,211,.75)}
+    .kvs{display:grid;gap:8px;margin-top:8px}
+    .kv{
+      display:flex;justify-content:space-between;gap:10px;
+      padding:10px 12px;border-radius:12px;border:1px solid var(--line);
+      background:rgba(0,0,0,.14);font-size:14px
     }
-    .msg{margin-top:10px;color:var(--muted);line-height:1.45}
-    .ok{color:rgba(34,197,94,.95)}
-    .bad{color:rgba(239,68,68,.95)}
-    .warn{color:rgba(245,158,11,.95)}
-    .tokenBox{
-      margin-top:12px;
-      padding:12px;
+    .kv b{font-weight:700}
+    .msg{
+      margin:14px 0 0;
+      padding:12px 12px;
       border-radius:14px;
-      border:1px dashed rgba(255,255,255,.22);
+      border:1px solid var(--line);
       background:rgba(0,0,0,.18);
-      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+      color:var(--muted);
+      line-height:1.35;
       font-size:14px;
-      word-break:break-all;
+      white-space:pre-wrap;
     }
-    .copyRow{display:flex;gap:10px;align-items:center;margin-top:10px}
-    .copyRow button{flex:0 0 auto}
-    footer{margin-top:18px;color:rgba(255,255,255,.42);font-size:12px}
-    a{color:#93c5fd}
+    .ok{border-color:rgba(34,197,94,.35);color:#c7f9d4}
+    .warn{border-color:rgba(245,158,11,.35);color:#ffe6b5}
+    .bad{border-color:rgba(239,68,68,.35);color:#ffd0d0}
+    .tabs{
+      display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 10px
+    }
+    .tab{
+      padding:10px 12px;border-radius:999px;border:1px solid var(--line);
+      background:rgba(255,255,255,.03);color:var(--muted);
+      cursor:pointer;font-weight:650;font-size:14px
+    }
+    .tab.active{color:var(--text);background:rgba(45,107,255,.18);border-color:rgba(45,107,255,.3)}
+    .hide{display:none !important}
+    .tiny{font-size:12px;color:rgba(155,176,211,.8)}
+    code{color:#d7e7ff}
   </style>
 </head>
-
 <body>
   <div class="wrap">
+    <h1>Web → PDF</h1>
+    <p class="sub">
+      Buy credits via Stripe Checkout. Your access token will appear after payment.
+      Then paste a URL and generate a PDF.
+    </p>
 
-    <div class="hero">
-      <h1>Web → PDF Credits</h1>
-      <p class="sub">Buy credits with Stripe Checkout. After payment, your access token will appear here.</p>
-      <div class="row">
-        <span class="pill">Backend: <span id="baseUrlLabel"></span></span>
-        <span class="pill">Stripe Checkout: <code>/api/stripe/create-checkout-session</code></span>
-        <span class="pill">Webhook: <code>/api/stripe/webhook</code></span>
-      </div>
+    <div class="row">
+      <span class="pill">Backend: <b id="backendHost">…</b></span>
+      <span class="pill">Create session: <code>/api/stripe/create-checkout-session</code></span>
+      <span class="pill">Webhook: <code>/api/stripe/webhook</code></span>
+      <span class="pill">Convert: <code>/api/web-to-pdf</code></span>
     </div>
 
-    <div class="grid">
-      <div class="card">
-        <div class="tier">Economy</div>
-        <div class="price">$9.99</div>
-        <p class="credits">10 credits</p>
-        <button class="btn" onclick="startCheckout('economy')">Buy Economy</button>
-      </div>
-
-      <div class="card">
-        <div class="tier">Professional</div>
-        <div class="price">$24.99</div>
-        <p class="credits">50 credits</p>
-        <button class="btn" onclick="startCheckout('pro')">Buy Pro</button>
-      </div>
-
-      <div class="card">
-        <div class="tier">Platinum</div>
-        <div class="price">$49.99</div>
-        <p class="credits">200 credits</p>
-        <button class="btn" onclick="startCheckout('platinum')">Buy Platinum</button>
-      </div>
+    <div class="tabs">
+      <button class="tab active" id="tabBuy" type="button">Buy Credits</button>
+      <button class="tab" id="tabConvert" type="button">Convert</button>
     </div>
 
-    <div class="panel" id="resultPanel" style="display:none;">
-      <div class="row">
-        <div>
-          <div class="pill" id="statusPill">Ready.</div>
+    <!-- BUY -->
+    <section id="panelBuy">
+      <div class="grid">
+        <div class="card">
+          <h2>Economy</h2>
+          <div class="price">$9.99</div>
+          <div class="muted">10 credits</div>
+          <div style="margin-top:12px">
+            <button class="btn" id="btnEconomy">Buy Economy</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Pro</h2>
+          <div class="price">$24.99</div>
+          <div class="muted">50 credits</div>
+          <div style="margin-top:12px">
+            <button class="btn" id="btnPro">Buy Pro</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Platinum</h2>
+          <div class="price">$49.99</div>
+          <div class="muted">200 credits</div>
+          <div style="margin-top:12px">
+            <button class="btn" id="btnPlatinum">Buy Platinum</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Already have a token?</h2>
+          <div class="field" style="margin-top:10px">
+            <input id="tokenCheck" placeholder="Paste your token (e.g., wtp_… or 4DFB…)" />
+            <button class="btn secondary" id="btnCheck" type="button">Check Credits</button>
+          </div>
+          <div class="msg" id="msgCheck">Tip: after buying, your token will also be saved on this device automatically.</div>
         </div>
       </div>
 
-      <div id="resultMsg" class="msg"></div>
-
-      <div id="tokenArea" style="display:none;">
-        <div class="tokenBox" id="tokenBox"></div>
-        <div class="copyRow">
-          <button class="btn2" onclick="copyToken()">Copy Token</button>
-          <button class="btn2" onclick="openApp()">Go to Web → PDF</button>
+      <div class="card" style="margin-top:14px">
+        <h2>After payment</h2>
+        <div class="msg" id="msgReturn">
+If you land here and don’t see a token immediately, that’s normal.
+The webhook can take a few seconds.
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="panel">
-      <div class="row">
-        <div>
-          <div class="tier">Already have a token?</div>
-          <div class="msg">Check remaining credits.</div>
+    <!-- CONVERT -->
+    <section id="panelConvert" class="hide">
+      <div class="card">
+        <h2>Convert Web Page to PDF</h2>
+        <div class="muted">This burns 1 credit only after a successful PDF is generated.</div>
+
+        <div style="margin-top:12px" class="field">
+          <input id="tokenUse" placeholder="Token (auto-filled if available)" />
         </div>
-      </div>
-      <div class="row">
-        <input id="tokenInput" placeholder="Paste your token (e.g., wtp_...)" />
-        <button class="btn2" onclick="checkCredits()">Check Credits</button>
-      </div>
-      <div id="creditsMsg" class="msg"></div>
-    </div>
 
-    <footer>
-      If you land here after paying and don’t see a token immediately, that’s normal — the webhook may take a few seconds.
-    </footer>
+        <div style="margin-top:10px" class="field">
+          <input id="urlUse" placeholder="https://example.com/page" />
+        </div>
 
+        <div style="margin-top:12px" class="field">
+          <button class="btn" id="btnConvert" type="button">Generate PDF</button>
+          <button class="btn secondary" id="btnSaveToken" type="button">Save Token</button>
+        </div>
+
+        <div class="kvs" id="kvsOut" style="margin-top:12px" class="hide"></div>
+        <div class="msg" id="msgConvert">Put in a token + a URL, then hit Generate.</div>
+      </div>
+    </section>
   </div>
 
 <script>
-  // If you ever host front-end separately from backend, set this to your backend origin.
-  // Example: const API_BASE = "https://webtopdf-1.onrender.com";
-  const API_BASE = "";
+  const BASE = location.origin;
+  document.getElementById("backendHost").textContent = new URL(BASE).host;
 
-  const $ = (id) => document.getElementById(id);
+  // Tabs
+  const tabBuy = document.getElementById("tabBuy");
+  const tabConvert = document.getElementById("tabConvert");
+  const panelBuy = document.getElementById("panelBuy");
+  const panelConvert = document.getElementById("panelConvert");
 
-  function setStatus(text, cls){
-    const pill = $("statusPill");
-    pill.textContent = text;
-    pill.className = "pill " + (cls || "");
+  function showTab(which){
+    const buy = which === "buy";
+    tabBuy.classList.toggle("active", buy);
+    tabConvert.classList.toggle("active", !buy);
+    panelBuy.classList.toggle("hide", !buy);
+    panelConvert.classList.toggle("hide", buy);
+  }
+  tabBuy.addEventListener("click", () => showTab("buy"));
+  tabConvert.addEventListener("click", () => showTab("convert"));
+
+  // Token storage
+  const LS_TOKEN = "webtopdf_token";
+  function loadToken(){
+    return localStorage.getItem(LS_TOKEN) || "";
+  }
+  function saveToken(tok){
+    if(!tok) return;
+    localStorage.setItem(LS_TOKEN, tok);
+  }
+  function setTokenEverywhere(tok){
+    if(!tok) return;
+    document.getElementById("tokenCheck").value = tok;
+    document.getElementById("tokenUse").value = tok;
   }
 
-  function showResultPanel(){
-    $("resultPanel").style.display = "block";
+  // Messages
+  function setMsg(el, kind, text){
+    el.classList.remove("ok","warn","bad");
+    if(kind) el.classList.add(kind);
+    el.textContent = text;
   }
 
-  async function startCheckout(tier){
-    showResultPanel();
-    setStatus("Redirecting to Stripe Checkout…", "warn");
-    $("resultMsg").innerHTML = "Creating your Stripe Checkout session…";
-    $("tokenArea").style.display = "none";
-
-    const btns = document.querySelectorAll("button.btn");
-    btns.forEach(b => b.disabled = true);
-
+  // Stripe: create checkout session
+  async function buyTier(tier){
+    const btnMap = {
+      economy: document.getElementById("btnEconomy"),
+      pro: document.getElementById("btnPro"),
+      platinum: document.getElementById("btnPlatinum"),
+    };
+    const b = btnMap[tier];
+    const old = b.textContent;
+    b.disabled = true;
+    b.textContent = "Opening Stripe…";
     try{
-      const res = await fetch(API_BASE + "/api/stripe/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type":"application/json" },
+      const res = await fetch(`${BASE}/api/stripe/create-checkout-session`,{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
         body: JSON.stringify({ tier })
       });
-
-      const data = await res.json().catch(() => ({}));
-
+      const data = await res.json().catch(()=> ({}));
       if(!res.ok || !data.ok || !data.url){
-        throw new Error(data.detail || "Checkout session failed.");
+        throw new Error(data.detail || data.error || `Failed (${res.status})`);
       }
-
-      window.location.href = data.url;
+      location.href = data.url; // go to Stripe hosted checkout
     }catch(err){
-      setStatus("Checkout failed", "bad");
-      $("resultMsg").innerHTML = `<span class="bad">${escapeHtml(err.message || String(err))}</span>`;
-      btns.forEach(b => b.disabled = false);
+      alert(String(err.message || err));
+    }finally{
+      b.disabled = false;
+      b.textContent = old;
     }
   }
 
-  // SUCCESS FLOW:
-  // Stripe sends the user back to SUCCESS_URL, which should include:
-  //   ?session_id={CHECKOUT_SESSION_ID}
-  // Your backend webhook writes token to Sheets and logs it.
-  // Then front-end calls /api/stripe/session-result?session_id=...
-  // and displays token once ready.
-  async function handleReturn(){
-    const url = new URL(window.location.href);
-    const sessionId = url.searchParams.get("session_id");
-    const canceled = url.searchParams.get("canceled");
+  document.getElementById("btnEconomy").addEventListener("click", ()=> buyTier("economy"));
+  document.getElementById("btnPro").addEventListener("click", ()=> buyTier("pro"));
+  document.getElementById("btnPlatinum").addEventListener("click", ()=> buyTier("platinum"));
 
-    if(!sessionId && !canceled) return;
-
-    showResultPanel();
-
-    if(canceled){
-      setStatus("Payment canceled", "warn");
-      $("resultMsg").innerHTML = "No charge was made. You can try again anytime.";
+  // Credits check
+  document.getElementById("btnCheck").addEventListener("click", async ()=>{
+    const tok = (document.getElementById("tokenCheck").value || "").trim();
+    const msg = document.getElementById("msgCheck");
+    if(!tok){
+      setMsg(msg,"warn","Paste a token first.");
       return;
     }
-
-    setStatus("Finalizing purchase…", "warn");
-    $("resultMsg").innerHTML = "Payment received. Waiting for token mint…";
-
-    // Poll session-result for up to ~30 seconds
-    const started = Date.now();
-    const timeoutMs = 30000;
-
-    while(Date.now() - started < timeoutMs){
-      try{
-        const r = await fetch(API_BASE + "/api/stripe/session-result?session_id=" + encodeURIComponent(sessionId));
-        const d = await r.json().catch(() => ({}));
-
-        if(d.ok && d.ready && d.token){
-          setStatus("Token ready", "ok");
-          $("resultMsg").innerHTML = `Tier: <b>${escapeHtml(d.tier || "")}</b> • Credits: <b>${escapeHtml(String(d.credits || ""))}</b>`;
-          $("tokenBox").textContent = d.token;
-          $("tokenArea").style.display = "block";
-
-          // Fill token input too
-          $("tokenInput").value = d.token;
-          return;
-        }
-      }catch(e){
-        // ignore and retry
+    setMsg(msg,"","Checking…");
+    try{
+      const res = await fetch(`${BASE}/api/credits?token=${encodeURIComponent(tok)}`);
+      const data = await res.json().catch(()=> ({}));
+      if(!res.ok) throw new Error(data.detail || `Failed (${res.status})`);
+      if(!data.valid){
+        setMsg(msg,"bad",`Token not valid: ${tok}`);
+        return;
       }
-
-      await sleep(1200);
+      saveToken(tok);
+      setTokenEverywhere(tok);
+      setMsg(msg,"ok",`Valid.\nPlan: ${data.plan || "?"}\nRemaining: ${data.remaining}\nLast used: ${data.last_used_at_utc || "-"}`);
+    }catch(err){
+      setMsg(msg,"bad",String(err.message || err));
     }
+  });
 
-    setStatus("Still processing", "warn");
-    $("resultMsg").innerHTML =
-      "Your payment is confirmed, but the token is still minting. Give it another moment, then refresh this page.";
+  // Convert → PDF (download blob)
+  function parseFilenameFromDisposition(disposition){
+    if(!disposition) return "";
+    const m = /filename="([^"]+)"/i.exec(disposition);
+    return m ? m[1] : "";
   }
 
-  async function checkCredits(){
-    const token = ($("tokenInput").value || "").trim();
-    $("creditsMsg").textContent = "";
-    if(!token){
-      $("creditsMsg").innerHTML = `<span class="warn">Paste a token first.</span>`;
-      return;
-    }
+  async function convertNow(){
+    const tok = (document.getElementById("tokenUse").value || "").trim();
+    const url = (document.getElementById("urlUse").value || "").trim();
+    const msg = document.getElementById("msgConvert");
+    const btn = document.getElementById("btnConvert");
+    const kvs = document.getElementById("kvsOut");
 
-    $("creditsMsg").textContent = "Checking…";
+    kvs.innerHTML = "";
+    kvs.style.display = "none";
+
+    if(!tok){ setMsg(msg,"warn","Token is required."); return; }
+    if(!url){ setMsg(msg,"warn","URL is required."); return; }
+
+    saveToken(tok);
+    setTokenEverywhere(tok);
+
+    btn.disabled = true;
+    const old = btn.textContent;
+    btn.textContent = "Generating…";
+    setMsg(msg,"","Working…");
 
     try{
-      const r = await fetch(API_BASE + "/api/credits?token=" + encodeURIComponent(token));
-      const d = await r.json().catch(() => ({}));
+      const res = await fetch(`${BASE}/api/web-to-pdf`,{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ token: tok, url })
+      });
 
-      if(!r.ok || !d.ok || !d.valid){
-        $("creditsMsg").innerHTML = `<span class="bad">Token not found or invalid.</span>`;
+      if(!res.ok){
+        const data = await res.json().catch(()=> ({}));
+        throw new Error(data.detail || `Failed (${res.status})`);
+      }
+
+      const blob = await res.blob();
+      const jobId = res.headers.get("X-Job-Id") || "";
+      const remaining = res.headers.get("X-Credits-Remaining") || "";
+      const dispo = res.headers.get("Content-Disposition") || "";
+      const filename = parseFilenameFromDisposition(dispo) || "webtopdf.pdf";
+
+      // Show results
+      const items = [];
+      if(jobId) items.push(["Job ID", jobId]);
+      if(remaining) items.push(["Credits Remaining", remaining]);
+      items.push(["File", filename]);
+
+      kvs.innerHTML = items.map(([k,v]) => (
+        `<div class="kv"><b>${k}</b><span>${String(v)}</span></div>`
+      )).join("");
+      kvs.style.display = "grid";
+
+      // Download
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=> {
+        URL.revokeObjectURL(a.href);
+        a.remove();
+      }, 1500);
+
+      setMsg(msg,"ok",`PDF generated and downloaded.\n${remaining ? ("Remaining credits: " + remaining) : ""}`);
+    }catch(err){
+      setMsg(msg,"bad",String(err.message || err));
+    }finally{
+      btn.disabled = false;
+      btn.textContent = old;
+    }
+  }
+
+  document.getElementById("btnConvert").addEventListener("click", convertNow);
+  document.getElementById("btnSaveToken").addEventListener("click", ()=>{
+    const tok = (document.getElementById("tokenUse").value || "").trim();
+    const msg = document.getElementById("msgConvert");
+    if(!tok){ setMsg(msg,"warn","Paste a token first."); return; }
+    saveToken(tok);
+    setTokenEverywhere(tok);
+    setMsg(msg,"ok","Token saved on this device.");
+  });
+
+  // On load: auto-fill token if we have one
+  const existing = loadToken();
+  if(existing) setTokenEverywhere(existing);
+
+  // Handle Stripe return
+  const params = new URLSearchParams(location.search);
+  const isCancel = params.get("cancel") === "1";
+  const isSuccess = params.get("success") === "1";
+  const sessionId = params.get("session_id") || "";
+
+  const msgReturn = document.getElementById("msgReturn");
+
+  async function pollSessionResult(sessionId){
+    // Poll up to ~20 seconds
+    for(let i=0;i<20;i++){
+      const res = await fetch(`${BASE}/api/stripe/session-result?session_id=${encodeURIComponent(sessionId)}`);
+      const data = await res.json().catch(()=> ({}));
+      if(res.ok && data.ok && data.ready && data.token){
+        return data;
+      }
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    return null;
+  }
+
+  (async ()=>{
+    if(isCancel){
+      setMsg(msgReturn,"warn","Payment canceled. No charge. You can try again.");
+      return;
+    }
+
+    if(isSuccess){
+      if(!sessionId){
+        setMsg(msgReturn,"bad","Success return detected, but no session_id was provided. (Check STRIPE_SUCCESS_URL formatting.)");
         return;
       }
 
-      const rem = d.remaining;
-      const plan = d.plan || "";
-      const last = d.last_used_at_utc || "";
+      setMsg(msgReturn,"","Payment received.\nFinalizing token… (waiting for webhook)");
+      const data = await pollSessionResult(sessionId);
 
-      $("creditsMsg").innerHTML =
-        `<span class="ok">Valid.</span> Plan: <b>${escapeHtml(plan)}</b> • Remaining: <b>${escapeHtml(String(rem))}</b>` +
-        (last ? ` • Last used: <code>${escapeHtml(last)}</code>` : "");
-    }catch(err){
-      $("creditsMsg").innerHTML = `<span class="bad">${escapeHtml(err.message || String(err))}</span>`;
+      if(!data){
+        setMsg(msgReturn,"warn","Payment received, but token is not ready yet.\nWait a moment, then refresh this page.\n(If it never appears, the webhook didn’t reach your server.)");
+        return;
+      }
+
+      const tok = data.token;
+      saveToken(tok);
+      setTokenEverywhere(tok);
+
+      setMsg(msgReturn,"ok",`Token minted.\nTier: ${data.tier}\nCredits: ${data.credits}\nToken: ${tok}\n\nNow you can convert a URL → PDF.`);
+      showTab("convert");
     }
-  }
-
-  function copyToken(){
-    const t = ($("tokenBox").textContent || "").trim();
-    if(!t) return;
-    navigator.clipboard.writeText(t).then(() => {
-      setStatus("Copied", "ok");
-    }).catch(() => {
-      setStatus("Copy failed", "warn");
-    });
-  }
-
-  function openApp(){
-    // Send them to your main UI where they generate PDFs
-    // Adjust if needed:
-    window.location.href = API_BASE + "/";
-  }
-
-  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
-  function escapeHtml(str){
-    return String(str)
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
-  }
-
-  // Display current base URL label
-  (function(){
-    const base = API_BASE || window.location.origin;
-    $("baseUrlLabel").textContent = base.replace(/^https?:\/\//, "");
   })();
-
-  handleReturn();
 </script>
-
 </body>
 </html>
