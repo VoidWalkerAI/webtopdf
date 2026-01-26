@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Web → PDF (Credits + Converter)</title>
   <meta name="theme-color" content="#0b1220" />
+
+  <!-- Favicon (put favicon.ico in /static/) -->
+  <link rel="icon" href="/static/favicon.ico">
+
   <style>
     :root{
       --bg:#0b1220;
@@ -18,6 +22,9 @@
       --ok:#22c55e;
       --warn:#f59e0b;
       --bad:#ef4444;
+
+      --chipbg: rgba(255,255,255,.04);
+      --chipline: rgba(255,255,255,.10);
     }
     *{box-sizing:border-box}
     body{
@@ -26,7 +33,11 @@
       background:radial-gradient(1200px 600px at 20% 0%, #15224a 0%, var(--bg) 60%);
       color:var(--text);
     }
-    .wrap{max-width:980px;margin:0 auto;padding:20px 16px 60px}
+    .wrap{max-width:980px;margin:0 auto;padding:20px 16px 40px}
+    .topbar{
+      display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+      margin-bottom:10px;
+    }
     h1{margin:10px 0 6px;font-size:34px;letter-spacing:.2px}
     .sub{color:var(--muted);margin:0 0 16px;line-height:1.35}
     .row{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 18px}
@@ -41,181 +52,275 @@
     .card{
       border:1px solid var(--line);
       background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
-      border-radius:18px;
-      padding:16px;
-      box-shadow:0 10px 30px rgba(0,0,0,.25);
+      border-radius:18px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25);
     }
     .card h2{margin:0 0 10px;font-size:18px}
     .price{font-size:34px;margin:2px 0 0}
     .muted{color:var(--muted)}
     .btn{
-      width:100%;
-      padding:14px 14px;
-      border-radius:14px;
+      width:100%; padding:14px 14px; border-radius:14px;
       border:1px solid rgba(255,255,255,.12);
       background:linear-gradient(180deg,var(--btn),var(--btn2));
-      color:white;
-      font-weight:700;
-      cursor:pointer;
-      font-size:15px;
+      color:white; font-weight:700; cursor:pointer; font-size:15px;
+      transition: all 0.2s ease;
     }
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(45, 107, 255, 0.30);
+    }
+    .btn:active:not(:disabled) { transform: translateY(0); }
     .btn:disabled{opacity:.55;cursor:not-allowed}
-    .btn.secondary{
-      background:rgba(255,255,255,.06);
-      border:1px solid var(--line);
-      font-weight:650;
+    .btn.secondary{ background:rgba(255,255,255,.06); border:1px solid var(--line); font-weight:650; }
+    input{
+      width:100%; padding:12px 12px; border-radius:12px;
+      border:1px solid var(--line); background:rgba(0,0,0,.18);
+      color:var(--text); outline:none; font-size:15px;
     }
-    .btn.small{padding:10px 12px;border-radius:12px;font-size:14px}
-    .field{display:flex;gap:10px;flex-wrap:wrap}
-    input, textarea{
-      width:100%;
-      padding:12px 12px;
-      border-radius:12px;
-      border:1px solid var(--line);
-      background:rgba(0,0,0,.18);
-      color:var(--text);
-      outline:none;
-      font-size:15px;
-    }
-    input::placeholder{color:rgba(155,176,211,.75)}
-    .kvs{display:grid;gap:8px;margin-top:8px}
     .kv{
-      display:flex;justify-content:space-between;gap:10px;
-      padding:10px 12px;border-radius:12px;border:1px solid var(--line);
-      background:rgba(0,0,0,.14);font-size:14px
+      display:flex; justify-content:space-between; gap:10px;
+      padding:10px 12px; border-radius:12px; border:1px solid var(--line);
+      background:rgba(0,0,0,0.14); font-size:14px
     }
-    .kv b{font-weight:700}
     .msg{
-      margin:14px 0 0;
-      padding:12px 12px;
-      border-radius:14px;
-      border:1px solid var(--line);
-      background:rgba(0,0,0,.18);
-      color:var(--muted);
-      line-height:1.35;
-      font-size:14px;
-      white-space:pre-wrap;
+      margin:14px 0 0; padding:12px 12px; border-radius:14px;
+      border:1px solid var(--line); background:rgba(0,0,0,.18);
+      color:var(--muted); font-size:14px; white-space:pre-wrap;
     }
-    .ok{border-color:rgba(34,197,94,.35);color:#c7f9d4}
-    .warn{border-color:rgba(245,158,11,.35);color:#ffe6b5}
-    .bad{border-color:rgba(239,68,68,.35);color:#ffd0d0}
-    .tabs{
-      display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 10px
-    }
+    .ok{border-color:rgba(34,197,94,.35); color:#c7f9d4}
+    .warn{border-color:rgba(245,158,11,.35); color:#ffe6b5}
+    .bad{border-color:rgba(239,68,68,.35); color:#ffd0d0}
+    .tabs{display:flex; gap:10px; flex-wrap:wrap; margin:16px 0 10px}
     .tab{
-      padding:10px 12px;border-radius:999px;border:1px solid var(--line);
-      background:rgba(255,255,255,.03);color:var(--muted);
-      cursor:pointer;font-weight:650;font-size:14px
+      padding:10px 12px; border-radius:999px; border:1px solid var(--line);
+      background:rgba(255,255,255,0.03); color:var(--muted);
+      cursor:pointer; font-weight:650; font-size:14px
     }
-    .tab.active{color:var(--text);background:rgba(45,107,255,.18);border-color:rgba(45,107,255,.3)}
+    .tab.active{color:var(--text); background:rgba(45,107,255,0.18); border-color:rgba(45,107,255,0.3)}
     .hide{display:none !important}
-    .tiny{font-size:12px;color:rgba(155,176,211,.8)}
-    code{color:#d7e7ff}
+    .tiny{font-size:12px; color:rgba(155,176,211,0.8)}
+
+    /* Token status chip */
+    .chip{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:9px 12px; border-radius:999px;
+      border:1px solid var(--chipline);
+      background: var(--chipbg);
+      color: var(--muted);
+      font-size:13px;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .dot{width:9px;height:9px;border-radius:999px;background:rgba(255,255,255,.35)}
+    .chip.okchip{border-color:rgba(34,197,94,.35); color:#c7f9d4}
+    .chip.okchip .dot{background:rgba(34,197,94,.9)}
+    .chip.warnchip{border-color:rgba(245,158,11,.35); color:#ffe6b5}
+    .chip.warnchip .dot{background:rgba(245,158,11,.95)}
+    .chip.badchip{border-color:rgba(239,68,68,.35); color:#ffd0d0}
+    .chip.badchip .dot{background:rgba(239,68,68,.95)}
+
+    /* Footer */
+    footer{
+      max-width:980px; margin:0 auto; padding:12px 16px 30px;
+      color:rgba(155,176,211,0.85);
+      font-size:12px;
+    }
+    .footline{
+      border-top:1px solid var(--line);
+      padding-top:12px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px 14px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .footleft{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center}
+    .footright{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center}
+    .footlink{
+      color:rgba(231,238,252,0.82);
+      text-decoration:none;
+      border-bottom:1px dashed rgba(231,238,252,0.22);
+    }
+    .footlink:hover{color:rgba(231,238,252,0.98); border-bottom-color: rgba(231,238,252,0.42);}
+    .badge{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 10px; border-radius:999px;
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.15);
+    }
+
+    /* Legal modals */
+    .modalOverlay{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.55);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      z-index:9999;
+    }
+    .modal{
+      width:min(860px, 100%);
+      border:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border-radius:18px;
+      box-shadow:0 20px 70px rgba(0,0,0,.55);
+      overflow:hidden;
+    }
+    .modalHeader{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px;
+      padding:14px 14px;
+      border-bottom:1px solid var(--line);
+      background:rgba(0,0,0,.12);
+    }
+    .modalTitle{font-weight:800; letter-spacing:.2px}
+    .modalClose{
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      padding:8px 10px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:750;
+    }
+    .modalBody{
+      padding:14px;
+      color:rgba(231,238,252,0.9);
+      font-size:13px;
+      line-height:1.45;
+      max-height:70vh;
+      overflow:auto;
+      white-space:normal;
+    }
+    .modalBody h3{margin:14px 0 8px; font-size:14px}
+    .modalBody p{margin:8px 0}
+    .modalBody ul{margin:8px 0 8px 18px}
+    code{background:rgba(0,0,0,.18); padding:2px 6px; border-radius:8px; border:1px solid var(--line)}
   </style>
 </head>
+
 <body>
   <div class="wrap">
-    <h1>Web → PDF</h1>
-    <p class="sub">
-      Buy credits via Stripe Checkout. Your access token will appear after payment.
-      Then paste a URL and generate a PDF.
-    </p>
+    <div class="topbar">
+      <div>
+        <h1>Web → PDF</h1>
+        <p class="sub">No account needed. Buy credits and convert instantly.</p>
+      </div>
+
+      <!-- Token Status Chip -->
+      <div class="chip" id="tokenChip" title="Token status">
+        <span class="dot"></span>
+        <span id="tokenChipText">No token saved</span>
+      </div>
+    </div>
 
     <div class="row">
-      <span class="pill">Backend: <b id="backendHost">…</b></span>
-      <span class="pill">Create session: <code>/api/stripe/create-checkout-session</code></span>
-      <span class="pill">Webhook: <code>/api/stripe/webhook</code></span>
-      <span class="pill">Convert: <code>/api/web-to-pdf</code></span>
+      <span class="pill">No Subscription Required - 🛡️ Secure Stripe Checkout</span>
+      <span class="pill">Credits never expire</span>
+      <span class="pill">⚡ High-Speed Engine</span>
+      <span class="pill">📄 Print-Ready Quality</span>
+      <span class="pill">Uses: Articles, Recipes, Docs, Invoices</span>
     </div>
 
     <div class="tabs">
-      <button class="tab active" id="tabBuy" type="button">Buy Credits</button>
-      <button class="tab" id="tabConvert" type="button">Convert</button>
+      <button class="tab active" id="tabBuy">Buy Credits</button>
+      <button class="tab" id="tabConvert">Convert</button>
     </div>
 
-    <!-- BUY -->
     <section id="panelBuy">
       <div class="grid">
         <div class="card">
           <h2>Economy</h2>
           <div class="price">$4.99</div>
           <div class="muted">50 credits</div>
-          <div style="margin-top:12px">
-            <button class="btn" id="btnEconomy">Buy Economy</button>
-          </div>
+          <div style="margin-top:12px"><button class="btn" id="btnEconomy">Buy Economy</button></div>
         </div>
 
         <div class="card">
           <h2>Pro</h2>
           <div class="price">$19.99</div>
           <div class="muted">250 credits</div>
-          <div style="margin-top:12px">
-            <button class="btn" id="btnPro">Buy Pro</button>
-          </div>
+          <div style="margin-top:12px"><button class="btn" id="btnPro">Buy Pro</button></div>
         </div>
 
         <div class="card">
           <h2>Platinum</h2>
           <div class="price">$49.99</div>
           <div class="muted">1000 credits</div>
-          <div style="margin-top:12px">
-            <button class="btn" id="btnPlatinum">Buy Platinum</button>
-          </div>
+          <div style="margin-top:12px"><button class="btn" id="btnPlatinum">Buy Platinum</button></div>
         </div>
 
         <div class="card">
-          <h2>Already have a token?</h2>
-          <div class="field" style="margin-top:10px">
-            <input id="tokenCheck" placeholder="Paste your token (e.g., wtp_… or 4DFB…)" />
-            <button class="btn secondary" id="btnCheck" type="button">Check Credits</button>
+          <h2>Check Credits</h2>
+          <div style="display:flex; gap:10px; margin-top:10px">
+            <input id="tokenCheck" placeholder="Paste token" />
+            <button class="btn secondary" style="width:auto" id="btnCheck">Check</button>
           </div>
-          <div class="msg" id="msgCheck">Tip: after buying, your token will also be saved on this device automatically.</div>
+          <div class="msg" id="msgCheck">Tokens are saved automatically after purchase.</div>
         </div>
       </div>
 
       <div class="card" style="margin-top:14px">
-        <h2>After payment</h2>
-        <div class="msg" id="msgReturn">
-If you land here and don’t see a token immediately, that’s normal.
-The webhook can take a few seconds.
-        </div>
+        <h2>Order Status</h2>
+        <div class="msg" id="msgReturn">Your order status will appear here after checkout.</div>
       </div>
     </section>
 
-    <!-- CONVERT -->
     <section id="panelConvert" class="hide">
       <div class="card">
         <h2>Convert Web Page to PDF</h2>
-        <div class="muted">This burns 1 credit only after a successful PDF is generated.</div>
+        <div class="muted">1 credit per successful generation.</div>
 
-        <div style="margin-top:12px" class="field">
-          <input id="tokenUse" placeholder="Token (auto-filled if available)" />
+        <div style="margin-top:12px"><input id="tokenUse" placeholder="Your Token" /></div>
+        <div style="margin-top:10px"><input id="urlUse" placeholder="https://example.com" /></div>
+        <div class="tiny" style="margin:4px 0 12px 2px">Try: news articles, recipes, documentation</div>
+
+        <div style="display:flex; gap:10px">
+          <button class="btn" id="btnConvert">Generate PDF</button>
+          <button class="btn secondary" id="btnSaveToken">Save Token</button>
         </div>
 
-        <div style="margin-top:10px" class="field">
-          <input id="urlUse" placeholder="https://example.com/page" />
-        </div>
-
-        <div style="margin-top:12px" class="field">
-          <button class="btn" id="btnConvert" type="button">Generate PDF</button>
-          <button class="btn secondary" id="btnSaveToken" type="button">Save Token</button>
-        </div>
-
-        <div class="kvs" id="kvsOut" style="margin-top:12px" class="hide"></div>
-        <div class="msg" id="msgConvert">Put in a token + a URL, then hit Generate.</div>
+        <div class="kvs" id="kvsOut" style="display:none; margin-top:12px"></div>
+        <div class="msg" id="msgConvert">Enter token and URL to begin.</div>
       </div>
     </section>
   </div>
 
+  <footer>
+    <div class="footline">
+      <div class="footleft">
+        <span class="badge">Powered by <b style="color:rgba(231,238,252,.92)">SageWire Syndicate</b></span>
+        <span class="badge">1 credit per successful PDF</span>
+        <span class="badge" id="verBadge">v1.0</span>
+      </div>
+      <div class="footright">
+        <a class="footlink" href="#" id="lnkTos">Terms</a>
+        <a class="footlink" href="#" id="lnkPrivacy">Privacy</a>
+        <a class="footlink" href="#" id="lnkRefunds">Refunds</a>
+        <a class="footlink" href="#" id="lnkSupport">Support</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Legal Modals -->
+  <div class="modalOverlay" id="modalOverlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal">
+      <div class="modalHeader">
+        <div class="modalTitle" id="modalTitle">Modal</div>
+        <button class="modalClose" id="modalClose">Close</button>
+      </div>
+      <div class="modalBody" id="modalBody"></div>
+    </div>
+  </div>
+
 <script>
   const BASE = location.origin;
-  document.getElementById("backendHost").textContent = new URL(BASE).host;
 
-  // Tabs
   const tabBuy = document.getElementById("tabBuy");
   const tabConvert = document.getElementById("tabConvert");
   const panelBuy = document.getElementById("panelBuy");
   const panelConvert = document.getElementById("panelConvert");
+  const msgReturn = document.getElementById("msgReturn");
 
   function showTab(which){
     const buy = which === "buy";
@@ -224,191 +329,213 @@ The webhook can take a few seconds.
     panelBuy.classList.toggle("hide", !buy);
     panelConvert.classList.toggle("hide", buy);
   }
-  tabBuy.addEventListener("click", () => showTab("buy"));
-  tabConvert.addEventListener("click", () => showTab("convert"));
+  tabBuy.onclick = () => showTab("buy");
+  tabConvert.onclick = () => showTab("convert");
 
-  // Token storage
   const LS_TOKEN = "webtopdf_token";
-  function loadToken(){
-    return localStorage.getItem(LS_TOKEN) || "";
-  }
-  function saveToken(tok){
-    if(!tok) return;
-    localStorage.setItem(LS_TOKEN, tok);
-  }
-  function setTokenEverywhere(tok){
-    if(!tok) return;
-    document.getElementById("tokenCheck").value = tok;
-    document.getElementById("tokenUse").value = tok;
-  }
+  const saveToken = (t) => { if(t) localStorage.setItem(LS_TOKEN, t); updateTokenChip(); };
+  const loadToken = () => localStorage.getItem(LS_TOKEN) || "";
+  const clearToken = () => { localStorage.removeItem(LS_TOKEN); updateTokenChip(); };
 
-  // Messages
-  function setMsg(el, kind, text){
-    el.classList.remove("ok","warn","bad");
+  const setTokenEverywhere = (t) => {
+    document.getElementById("tokenCheck").value = t || "";
+    document.getElementById("tokenUse").value = t || "";
+  };
+
+  const setMsg = (el, kind, text) => {
+    el.className = "msg";
     if(kind) el.classList.add(kind);
     el.textContent = text;
+  };
+
+  // Token chip
+  const tokenChip = document.getElementById("tokenChip");
+  const tokenChipText = document.getElementById("tokenChipText");
+
+  function maskToken(t){
+    t = (t||"").trim();
+    if(t.length <= 8) return t || "—";
+    return t.slice(0,4) + "…" + t.slice(-4);
   }
 
-  // Stripe: create checkout session
-  async function buyTier(tier){
-    const btnMap = {
-      economy: document.getElementById("btnEconomy"),
-      pro: document.getElementById("btnPro"),
-      platinum: document.getElementById("btnPlatinum"),
-    };
-    const b = btnMap[tier];
-    const old = b.textContent;
-    b.disabled = true;
-    b.textContent = "Opening Stripe…";
-    try{
-      const res = await fetch(`${BASE}/api/stripe/create-checkout-session`,{
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ tier })
-      });
-      const data = await res.json().catch(()=> ({}));
-      if(!res.ok || !data.ok || !data.url){
-        throw new Error(data.detail || data.error || `Failed (${res.status})`);
-      }
-      location.href = data.url; // go to Stripe hosted checkout
-    }catch(err){
-      alert(String(err.message || err));
-    }finally{
-      b.disabled = false;
-      b.textContent = old;
-    }
-  }
-
-  document.getElementById("btnEconomy").addEventListener("click", ()=> buyTier("economy"));
-  document.getElementById("btnPro").addEventListener("click", ()=> buyTier("pro"));
-  document.getElementById("btnPlatinum").addEventListener("click", ()=> buyTier("platinum"));
-
-  // Credits check
-  document.getElementById("btnCheck").addEventListener("click", async ()=>{
-    const tok = (document.getElementById("tokenCheck").value || "").trim();
-    const msg = document.getElementById("msgCheck");
-    if(!tok){
-      setMsg(msg,"warn","Paste a token first.");
+  function updateTokenChip(){
+    const t = loadToken().trim();
+    tokenChip.classList.remove("okchip","warnchip","badchip");
+    if(!t){
+      tokenChip.classList.add("warnchip");
+      tokenChipText.textContent = "No token saved";
+      tokenChip.title = "No token saved yet. Buy credits or paste your token.";
       return;
     }
-    setMsg(msg,"","Checking…");
+    tokenChip.classList.add("okchip");
+    tokenChipText.textContent = "Token saved: " + maskToken(t);
+    tokenChip.title = "Token is saved in this browser.\nTap to copy / clear.";
+  }
+
+  // Tap chip: copy token, long-press-ish fallback: confirm clear
+  tokenChip.addEventListener("click", async () => {
+    const t = loadToken().trim();
+    if(!t){
+      showTab("buy");
+      return;
+    }
     try{
-      const res = await fetch(`${BASE}/api/credits?token=${encodeURIComponent(tok)}`);
-      const data = await res.json().catch(()=> ({}));
-      if(!res.ok) throw new Error(data.detail || `Failed (${res.status})`);
-      if(!data.valid){
-        setMsg(msg,"bad",`Token not valid: ${tok}`);
-        return;
-      }
-      saveToken(tok);
-      setTokenEverywhere(tok);
-      setMsg(msg,"ok",`Valid.\nPlan: ${data.plan || "?"}\nRemaining: ${data.remaining}\nLast used: ${data.last_used_at_utc || "-"}`);
-    }catch(err){
-      setMsg(msg,"bad",String(err.message || err));
+      await navigator.clipboard.writeText(t);
+      tokenChip.classList.remove("okchip");
+      tokenChip.classList.add("okchip");
+      tokenChipText.textContent = "Copied token ✓";
+      setTimeout(updateTokenChip, 1200);
+    }catch(e){
+      // ignore
     }
   });
 
-  // Convert → PDF (download blob)
-  function parseFilenameFromDisposition(disposition){
-    if(!disposition) return "";
-    const m = /filename="([^"]+)"/i.exec(disposition);
-    return m ? m[1] : "";
+  tokenChip.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    const t = loadToken().trim();
+    if(!t) return;
+    if(confirm("Clear saved token from this device?")){
+      clearToken();
+      setTokenEverywhere("");
+      setMsg(document.getElementById("msgCheck"), "warn", "Saved token cleared on this device.");
+    }
+  });
+
+  async function buyTier(tier){
+    const id =
+      tier === "economy" ? "btnEconomy" :
+      tier === "pro" ? "btnPro" :
+      "btnPlatinum";
+
+    const b = document.getElementById(id);
+    const old = b.textContent;
+    b.disabled = true; b.textContent = "Connecting...";
+
+    try {
+      const res = await fetch(`${BASE}/api/stripe/create-checkout-session`, {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ tier })
+      });
+
+      const data = await res.json().catch(()=> ({}));
+      if(!res.ok) throw new Error(data.detail || "Stripe session error.");
+      if(data.url) location.href = data.url;
+      else throw new Error("Stripe did not return a checkout URL.");
+    } catch(e) {
+      alert(e.message || "Error connecting to Stripe.");
+    } finally {
+      b.disabled = false; b.textContent = old;
+    }
+  }
+
+  document.getElementById("btnEconomy").onclick = () => buyTier("economy");
+  document.getElementById("btnPro").onclick = () => buyTier("pro");
+  document.getElementById("btnPlatinum").onclick = () => buyTier("platinum");
+
+  // Check credits
+  document.getElementById("btnCheck").onclick = async () => {
+    const tok = document.getElementById("tokenCheck").value.trim();
+    const out = document.getElementById("msgCheck");
+    if(!tok) return setMsg(out, "warn", "Paste a token first.");
+
+    setMsg(out, "", "Checking token…");
+    try{
+      const res = await fetch(`${BASE}/api/credits?token=${encodeURIComponent(tok)}`);
+      const data = await res.json().catch(()=> ({}));
+      if(!res.ok || !data.ok || !data.valid){
+        return setMsg(out, "bad", "Token not valid.");
+      }
+      setMsg(out, "ok", `Valid token.\nPlan: ${data.plan || "—"}\nCredits remaining: ${data.remaining}`);
+    }catch(e){
+      setMsg(out, "bad", "Could not reach server. Try again.");
+    }
+  };
+
+  function classifyErrorMessage(raw){
+    const s = String(raw||"").toLowerCase();
+
+    if(s.includes("timed out") || s.includes("timeout")) {
+      return { kind:"warn", msg:"That page took too long to load.\nTry again, or use a simpler page." };
+    }
+    if(s.includes("missing token") || s.includes("invalid token") || s.includes("no credits")) {
+      return { kind:"bad", msg:"Token invalid or out of credits.\nBuy credits or paste a valid token." };
+    }
+    if(s.includes("url") && (s.includes("http") || s.includes("https"))) {
+      return { kind:"warn", msg:"URL must start with http:// or https://\nTry pasting the full link." };
+    }
+    return { kind:"bad", msg:"Service error.\nTry again in a moment." };
   }
 
   async function convertNow(){
-    const tok = (document.getElementById("tokenUse").value || "").trim();
-    const url = (document.getElementById("urlUse").value || "").trim();
+    const tok = document.getElementById("tokenUse").value.trim();
+    const url = document.getElementById("urlUse").value.trim();
     const msg = document.getElementById("msgConvert");
     const btn = document.getElementById("btnConvert");
     const kvs = document.getElementById("kvsOut");
 
-    kvs.innerHTML = "";
+    if(!tok || !url) return setMsg(msg, "warn", "Token and URL required.");
+
     kvs.style.display = "none";
+    btn.disabled = true; btn.textContent = "Generating…";
 
-    if(!tok){ setMsg(msg,"warn","Token is required."); return; }
-    if(!url){ setMsg(msg,"warn","URL is required."); return; }
-
-    saveToken(tok);
-    setTokenEverywhere(tok);
-
-    btn.disabled = true;
-    const old = btn.textContent;
-    btn.textContent = "Generating…";
-    setMsg(msg,"","Working…");
-
-    try{
-      const res = await fetch(`${BASE}/api/web-to-pdf`,{
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
+    try {
+      const res = await fetch(`${BASE}/api/web-to-pdf`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ token: tok, url })
       });
 
       if(!res.ok){
-        const data = await res.json().catch(()=> ({}));
-        throw new Error(data.detail || `Failed (${res.status})`);
+        const j = await res.json().catch(()=> ({}));
+        const detail = j.detail || `HTTP ${res.status}`;
+        const f = classifyErrorMessage(detail);
+        throw new Error(f.msg);
       }
 
       const blob = await res.blob();
-      const jobId = res.headers.get("X-Job-Id") || "";
-      const remaining = res.headers.get("X-Credits-Remaining") || "";
-      const dispo = res.headers.get("Content-Disposition") || "";
-      const filename = parseFilenameFromDisposition(dispo) || "webtopdf.pdf";
+      const remaining = res.headers.get("X-Credits-Remaining") || "0";
+      const jobId = res.headers.get("X-Job-Id") || "—";
 
-      // Show results
-      const items = [];
-      if(jobId) items.push(["Job ID", jobId]);
-      if(remaining) items.push(["Credits Remaining", remaining]);
-      items.push(["File", filename]);
-
-      kvs.innerHTML = items.map(([k,v]) => (
-        `<div class="kv"><b>${k}</b><span>${String(v)}</span></div>`
-      )).join("");
-      kvs.style.display = "grid";
+      // Show pro success panel
+      kvs.innerHTML = `
+        <div style="text-align:center; padding:18px; border:1px solid rgba(34,197,94,.35); border-radius:14px; background:rgba(34,197,94,.05);">
+          <div style="font-size:34px;">✅</div>
+          <h3 style="color:var(--ok); margin:10px 0 12px;">PDF Generated</h3>
+          <div class="kv"><b>Job ID</b><span>${jobId}</span></div>
+          <div class="kv" style="margin-top:8px"><b>Credits Left</b><span>${remaining}</span></div>
+        </div>`;
+      kvs.style.display = "block";
 
       // Download
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = filename;
-      document.body.appendChild(a);
+      a.download = `webtopdf_${jobId}.pdf`.replace("webtopdf_—.pdf","webtopdf.pdf");
       a.click();
-      setTimeout(()=> {
-        URL.revokeObjectURL(a.href);
-        a.remove();
-      }, 1500);
 
-      setMsg(msg,"ok",`PDF generated and downloaded.\n${remaining ? ("Remaining credits: " + remaining) : ""}`);
-    }catch(err){
-      setMsg(msg,"bad",String(err.message || err));
-    }finally{
-      btn.disabled = false;
-      btn.textContent = old;
+      saveToken(tok);
+      setMsg(msg, "ok", "Download started.");
+    } catch(e) {
+      setMsg(msg, "bad", e.message || "Service error.");
+    } finally {
+      btn.disabled = false; btn.textContent = "Generate PDF";
     }
   }
 
-  document.getElementById("btnConvert").addEventListener("click", convertNow);
-  document.getElementById("btnSaveToken").addEventListener("click", ()=>{
-    const tok = (document.getElementById("tokenUse").value || "").trim();
-    const msg = document.getElementById("msgConvert");
-    if(!tok){ setMsg(msg,"warn","Paste a token first."); return; }
+  document.getElementById("btnConvert").onclick = convertNow;
+
+  document.getElementById("btnSaveToken").onclick = () => {
+    const btn = document.getElementById("btnSaveToken");
+    const tok = document.getElementById("tokenUse").value.trim();
+    if(!tok) return;
     saveToken(tok);
-    setTokenEverywhere(tok);
-    setMsg(msg,"ok","Token saved on this device.");
-  });
+    const old = btn.textContent;
+    btn.textContent = "✓ Saved";
+    btn.style.background = "var(--ok)";
+    setTimeout(() => { btn.textContent = old; btn.style.background = ""; }, 1400);
+  };
 
-  // On load: auto-fill token if we have one
-  const existing = loadToken();
-  if(existing) setTokenEverywhere(existing);
-
-  // Handle Stripe return
-  const params = new URLSearchParams(location.search);
-  const isCancel = params.get("cancel") === "1";
-  const isSuccess = params.get("success") === "1";
-  const sessionId = params.get("session_id") || "";
-
-  const msgReturn = document.getElementById("msgReturn");
-
+  // STRIPE RETURN HANDLING (robust: supports ?success=1&session_id=... and ?cancel=1 and ?canceled=1)
   async function pollSessionResult(sessionId){
-    // Poll up to ~20 seconds
     for(let i=0;i<20;i++){
       const res = await fetch(`${BASE}/api/stripe/session-result?session_id=${encodeURIComponent(sessionId)}`);
       const data = await res.json().catch(()=> ({}));
@@ -421,14 +548,21 @@ The webhook can take a few seconds.
   }
 
   (async ()=>{
+    const params = new URLSearchParams(location.search);
+
+    const isCancel = params.get("cancel") === "1" || params.get("canceled") === "1";
+    const isSuccess = params.get("success") === "1";
+    const sessionId = params.get("session_id") || "";
+
     if(isCancel){
       setMsg(msgReturn,"warn","Payment canceled. No charge. You can try again.");
+      window.history.replaceState({}, "", "/");
       return;
     }
 
     if(isSuccess){
       if(!sessionId){
-        setMsg(msgReturn,"bad","Success return detected, but no session_id was provided. (Check STRIPE_SUCCESS_URL formatting.)");
+        setMsg(msgReturn,"bad","Success detected, but no session_id was provided.\nCheck STRIPE_SUCCESS_URL formatting.");
         return;
       }
 
@@ -436,18 +570,103 @@ The webhook can take a few seconds.
       const data = await pollSessionResult(sessionId);
 
       if(!data){
-        setMsg(msgReturn,"warn","Payment received, but token is not ready yet.\nWait a moment, then refresh this page.\n(If it never appears, the webhook didn’t reach your server.)");
+        setMsg(msgReturn,"warn","Payment received, but token is not ready yet.\nWait a moment, then refresh.\n(If it never appears, the webhook didn’t reach your server.)");
         return;
       }
 
-      const tok = data.token;
-      saveToken(tok);
-      setTokenEverywhere(tok);
+      saveToken(data.token);
+      setTokenEverywhere(data.token);
 
-      setMsg(msgReturn,"ok",`Token minted.\nTier: ${data.tier}\nCredits: ${data.credits}\nToken: ${tok}\n\nNow you can convert a URL → PDF.`);
-      showTab("convert");
+      setMsg(msgReturn,"ok",`Token minted.\nTier: ${data.tier}\nCredits: ${data.credits}\nToken: ${data.token}\n\nNow you can convert a URL → PDF.`);
+
+      // Clean URL + flip to convert
+      window.history.replaceState({}, "", "/");
+      setTimeout(() => showTab("convert"), 900);
     }
   })();
+
+  // Init token from storage
+  const existing = loadToken();
+  if(existing) setTokenEverywhere(existing);
+  updateTokenChip();
+
+
+  // -----------------------
+  // Legal + Support Modals
+  // -----------------------
+  const overlay = document.getElementById("modalOverlay");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalBody = document.getElementById("modalBody");
+  const modalClose = document.getElementById("modalClose");
+
+  function openModal(title, html){
+    modalTitle.textContent = title;
+    modalBody.innerHTML = html;
+    overlay.style.display = "flex";
+    overlay.setAttribute("aria-hidden","false");
+  }
+  function closeModal(){
+    overlay.style.display = "none";
+    overlay.setAttribute("aria-hidden","true");
+  }
+  overlay.addEventListener("click", (e)=>{ if(e.target === overlay) closeModal(); });
+  modalClose.addEventListener("click", closeModal);
+  window.addEventListener("keydown",(e)=>{ if(e.key === "Escape") closeModal(); });
+
+  // Minimal “starter” legal text (you can replace later)
+  const TOS_HTML = `
+    <p><b>Last updated:</b> ${new Date().toISOString().slice(0,10)}</p>
+    <h3>Service</h3>
+    <p>Web → PDF converts a public URL into a PDF file. One credit is used only after a successful PDF generation.</p>
+    <h3>Acceptable Use</h3>
+    <ul>
+      <li>Don’t use this to access private systems you don’t own.</li>
+      <li>Don’t use it for unlawful content, harassment, or abuse.</li>
+      <li>We may block requests that overload the service or violate these terms.</li>
+    </ul>
+    <h3>No Warranty</h3>
+    <p>The service is provided “as-is”. We don’t guarantee that every site will render correctly.</p>
+    <h3>Limitation of Liability</h3>
+    <p>To the maximum extent permitted by law, we are not liable for indirect or consequential damages.</p>
+  `;
+
+  const PRIVACY_HTML = `
+    <p><b>Last updated:</b> ${new Date().toISOString().slice(0,10)}</p>
+    <h3>What we store</h3>
+    <ul>
+      <li>Purchase events (Stripe session ID, tier, credits, token).</li>
+      <li>Jobs log (URL, status, timestamps, token, remaining credits).</li>
+    </ul>
+    <h3>What we don’t do</h3>
+    <ul>
+      <li>No user accounts.</li>
+      <li>No selling personal data.</li>
+    </ul>
+    <h3>Tokens</h3>
+    <p>Your token is saved locally in your browser (localStorage). You can clear it anytime (right-click / long-press the token chip).</p>
+  `;
+
+  const REFUNDS_HTML = `
+    <p><b>Last updated:</b> ${new Date().toISOString().slice(0,10)}</p>
+    <p>Credits are digital goods. If you have a billing issue or the service is down for extended periods, contact support and we’ll review the situation.</p>
+    <p><b>Tip:</b> Some websites block printing or load slowly. If a conversion times out, you are not charged.</p>
+  `;
+
+  const SUPPORT_HTML = `
+    <p>If you need help, include:</p>
+    <ul>
+      <li>Your <b>Job ID</b> (shown after conversion)</li>
+      <li>The URL you tried</li>
+      <li>A screenshot of the message box</li>
+    </ul>
+    <p><b>Support email:</b> <span class="badge">herdmateofficial@gmail.com</span></p>
+  `;
+
+  document.getElementById("lnkTos").addEventListener("click",(e)=>{ e.preventDefault(); openModal("Terms of Service", TOS_HTML); });
+  document.getElementById("lnkPrivacy").addEventListener("click",(e)=>{ e.preventDefault(); openModal("Privacy Policy", PRIVACY_HTML); });
+  document.getElementById("lnkRefunds").addEventListener("click",(e)=>{ e.preventDefault(); openModal("Refund Policy", REFUNDS_HTML); });
+  document.getElementById("lnkSupport").addEventListener("click",(e)=>{ e.preventDefault(); openModal("Support", SUPPORT_HTML); });
+
 </script>
 </body>
 </html>
