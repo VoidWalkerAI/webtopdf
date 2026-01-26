@@ -395,13 +395,13 @@ def _tier_to_price_and_credits(tier: str) -> Dict[str, Any]:
     t = (tier or "").strip().lower()
 
     if t in ("economy", "eco", "10", "10pack", "10credits", "10_credits"):
-        return {"tier": "Economy", "price_id": PRICE_ECONOMY, "credits": 10}
+        return {"tier": "Economy", "price_id": PRICE_ECONOMY, "credits": 50}
 
     if t in ("pro", "professional", "50", "50pack", "50credits", "50_credits"):
-        return {"tier": "Pro", "price_id": PRICE_PRO, "credits": 50}
+        return {"tier": "Pro", "price_id": PRICE_PRO, "credits": 250}
 
     if t in ("platinum", "plat", "200", "200pack", "200credits", "200_credits"):
-        return {"tier": "Platinum", "price_id": PRICE_PLATINUM, "credits": 200}
+        return {"tier": "Platinum", "price_id": PRICE_PLATINUM, "credits": 1000}
 
     raise HTTPException(status_code=400, detail="Bad tier. Use economy | pro | platinum (or 10 | 50 | 200).")
 
