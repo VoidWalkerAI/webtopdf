@@ -32,9 +32,12 @@ import uuid
 import secrets
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
+from pathlib import Path
 
 from fastapi import FastAPI, Body, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 import stripe
 import gspread
@@ -50,11 +53,23 @@ app = FastAPI(title="WebToPDF API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten later if you want
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# -----------------------
+# Static UI (MUST BE BEFORE ROUTES)
+# -----------------------
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+INDEX_PATH = STATIC_DIR / "index.html"
+
+# Mount /static first
+if STATIC_DIR.is_dir():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 # -----------------------
@@ -74,9 +89,9 @@ STRIPE_WEBHOOK_SECRET = (os.getenv("STRIPE_WEBHOOK_SECRET") or "").strip()
 SUCCESS_URL = (os.getenv("STRIPE_SUCCESS_URL") or "").strip()
 CANCEL_URL = (os.getenv("STRIPE_CANCEL_URL") or "").strip()
 
-PRICE_ECONOMY = (os.getenv("STRIPE_PRICE_ECONOMY") or "").strip()     # 10 credits
-PRICE_PRO = (os.getenv("STRIPE_PRICE_PRO") or "").strip()             # 50 credits
-PRICE_PLATINUM = (os.getenv("STRIPE_PRICE_PLATINUM") or "").strip()   # 200 credits
+PRICE_ECONOMY = (os.getenv("STRIPE_PRICE_ECONOMY") or "").strip()
+PRICE_PRO = (os.getenv("STRIPE_PRICE_PRO") or "").strip()
+PRICE_PLATINUM = (os.getenv("STRIPE_PRICE_PLATINUM") or "").strip()
 
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
@@ -117,7 +132,7 @@ def _is_probably_url(u: str) -> bool:
 
 
 def _mint_token(prefix: str = "") -> str:
-    core = secrets.token_hex(8).upper()  # 16 chars
+    core = secrets.token_hex(8).upper()
     return f"{prefix}{core}" if prefix else core
 
 
@@ -230,7 +245,6 @@ def _find_row_index_by_token(ws: gspread.Worksheet, token: str) -> Optional[int]
     except Exception:
         return None
 
-    # must be col A, not header
     if not cell or cell.col != 1 or cell.row <= 1:
         return None
     return cell.row
@@ -264,7 +278,6 @@ def _allow_only(ws: gspread.Worksheet, token: str) -> Dict[str, Any]:
     if not row_index:
         raise HTTPException(status_code=500, detail="Token row not found for update.")
 
-    # Unlimited
     if remaining_i == -1:
         return {"token": token, "row_index": row_index, "plan": rec.get("plan", ""), "remaining_before": -1}
 
@@ -279,15 +292,14 @@ def _burn_one_credit(ws: gspread.Worksheet, allow: Dict[str, Any]) -> Dict[str, 
     remaining_before = int(allow["remaining_before"])
     token = allow["token"]
 
-    # unlimited
     if remaining_before == -1:
-        ws.update_cell(row, 5, _utc_now_iso())  # last_used_at_utc
+        ws.update_cell(row, 5, _utc_now_iso())
         return {"token": token, "remaining_before": -1, "remaining_after": -1}
 
     remaining_after = max(0, remaining_before - 1)
 
-    ws.update_cell(row, 3, str(remaining_after))  # remaining (col C)
-    ws.update_cell(row, 5, _utc_now_iso())        # last_used_at_utc (col E)
+    ws.update_cell(row, 3, str(remaining_after))
+    ws.update_cell(row, 5, _utc_now_iso())
     return {"token": token, "remaining_before": remaining_before, "remaining_after": remaining_after}
 
 
@@ -321,16 +333,16 @@ def _jobs_find_row(ws: gspread.Worksheet, job_id: str) -> Optional[int]:
 def _jobs_append_start(ws: gspread.Worksheet, job_id: str, url: str, token: str, plan: str, credits_before: int) -> None:
     row = [
         job_id,
-        _utc_now_iso(),   # created_at_utc
-        "",               # finished_at_utc
+        _utc_now_iso(),
+        "",
         url,
         "started",
-        "",               # pdf_filename
-        "",               # error
+        "",
+        "",
         token,
         plan,
         str(credits_before),
-        "",               # credits_after
+        "",
     ]
     ws.append_row(row, value_input_option="RAW")
 
@@ -347,8 +359,8 @@ def _jobs_update_finish(
     if not row:
         return
 
-    ws.update_cell(row, 3, _utc_now_iso())  # finished_at_utc
-    ws.update_cell(row, 5, status)          # status
+    ws.update_cell(row, 3, _utc_now_iso())
+    ws.update_cell(row, 5, status)
     ws.update_cell(row, 6, pdf_filename or "")
     ws.update_cell(row, 7, error or "")
     if credits_after is not None:
@@ -377,7 +389,7 @@ def _log_get_by_session(ws: gspread.Worksheet, session_id: str) -> Optional[Dict
 
 
 # -----------------------
-# Pricing tier mapping (accepts both labels and numbers)
+# Pricing tier mapping
 # -----------------------
 def _tier_to_price_and_credits(tier: str) -> Dict[str, Any]:
     t = (tier or "").strip().lower()
@@ -395,8 +407,28 @@ def _tier_to_price_and_credits(tier: str) -> Dict[str, Any]:
 
 
 # -----------------------
-# API
+# ROUTES
 # -----------------------
+@app.get("/")
+def homepage():
+    if INDEX_PATH.is_file():
+        return FileResponse(str(INDEX_PATH))
+    raise HTTPException(
+        status_code=500,
+        detail=f"UI file missing: {INDEX_PATH}. Ensure static/index.html is deployed."
+    )
+
+
+@app.get("/api/debug/ui")
+def debug_ui():
+    return {
+        "base_dir": str(BASE_DIR),
+        "static_dir_exists": STATIC_DIR.is_dir(),
+        "index_exists": INDEX_PATH.is_file(),
+        "static_dir_list": [p.name for p in STATIC_DIR.iterdir()] if STATIC_DIR.is_dir() else [],
+    }
+
+
 @app.get("/api/health")
 def health():
     return {
@@ -447,14 +479,7 @@ def admin_create_token(payload: dict = Body(...)):
     ws = _get_tokens_ws()
     token = _mint_token()
 
-    row = [
-        token,
-        requested_plan,
-        str(remaining_i),
-        _utc_now_iso(),
-        "",  # last_used_at_utc
-        note,
-    ]
+    row = [token, requested_plan, str(remaining_i), _utc_now_iso(), "", note]
     ws.append_row(row, value_input_option="RAW")
     return {"ok": True, "token": token, "plan": requested_plan, "remaining": remaining_i}
 
@@ -472,13 +497,11 @@ def web_to_pdf(payload: dict = Body(...)):
     tokens_ws = _get_tokens_ws()
     jobs_ws = _get_jobs_ws()
 
-    # Gate only (no decrement until success)
     allow = _allow_only(tokens_ws, token)
 
     job_id = uuid.uuid4().hex[:10].upper()
     filename = f"webtopdf_{job_id}.pdf"
 
-    # Log START
     _jobs_append_start(
         jobs_ws,
         job_id=job_id,
@@ -514,10 +537,8 @@ def web_to_pdf(payload: dict = Body(...)):
         _jobs_update_finish(jobs_ws, job_id=job_id, status="error", error=f"PDF generation failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
 
-    # Burn credit ONLY on success
     credit_info = _burn_one_credit(tokens_ws, allow)
 
-    # Log SUCCESS
     _jobs_update_finish(
         jobs_ws,
         job_id=job_id,
@@ -538,9 +559,6 @@ def web_to_pdf(payload: dict = Body(...)):
     )
 
 
-# -----------------------
-# Stripe Checkout: create session
-# -----------------------
 @app.post("/api/stripe/create-checkout-session")
 def stripe_create_checkout_session(payload: dict = Body(...)):
     if not _stripe_prices_ok():
@@ -566,9 +584,6 @@ def stripe_create_checkout_session(payload: dict = Body(...)):
         raise HTTPException(status_code=500, detail=f"Stripe session create failed: {str(e)}")
 
 
-# -----------------------
-# Stripe: webhook (mints token + logs session)
-# -----------------------
 @app.post("/api/stripe/webhook")
 async def stripe_webhook(request: Request):
     if not STRIPE_WEBHOOK_SECRET:
@@ -586,7 +601,6 @@ async def stripe_webhook(request: Request):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid Stripe signature.")
 
-    # Only care about successful payments
     if event.get("type") != "checkout.session.completed":
         return {"ok": True, "ignored": True, "type": event.get("type")}
 
@@ -602,11 +616,9 @@ async def stripe_webhook(request: Request):
 
     log_ws = _get_stripe_log_ws()
 
-    # Dedupe
     if _log_has_session(log_ws, session_id):
         return {"ok": True, "deduped": True, "session_id": session_id}
 
-    # Mint token (credits)
     token = _create_token_in_sheet(
         credits=credits_i,
         plan_name=f"Stripe {tier}",
@@ -614,7 +626,6 @@ async def stripe_webhook(request: Request):
         email=customer_email,
     )
 
-    # Log session
     log_ws.append_row(
         [session_id, _utc_now_iso(), tier, str(credits_i), token, customer_email],
         value_input_option="RAW",
@@ -623,9 +634,6 @@ async def stripe_webhook(request: Request):
     return {"ok": True, "session_id": session_id, "token_minted": True}
 
 
-# -----------------------
-# Stripe: success page lookup
-# -----------------------
 @app.get("/api/stripe/session-result")
 def stripe_session_result(session_id: str):
     log_ws = _get_stripe_log_ws()
